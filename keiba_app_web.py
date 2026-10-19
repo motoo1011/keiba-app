@@ -57,13 +57,13 @@ st.title("🐎 競馬分析アプリ（スマホ対応 Web版）")
 # 入力
 date = st.text_input("開催日 (YYYY-MM-DD)", "2026-10-18")
 
-# ★ 勝率閾値（0％以上に変更）
+# ★ 勝率閾値（0％以上）
 winrate_threshold = st.selectbox("勝率閾値（％以上）", [0, 5, 10, 15, 20, 25, 30]) / 100
 
-# ★ 単勝期待値閾値（名称変更＋0以上）
+# ★ 単勝期待値閾値（0 と 1.0〜3.0）
 ev_threshold = float(st.selectbox(
     "単勝期待値閾値（以上）",
-    [f"{x/10:.1f}" for x in range(0, 31)]  # 0.0〜3.0
+    ["0"] + [f"{x/10:.1f}" for x in range(10, 31)]  # 0, 1.0〜3.0
 ))
 
 # レース一覧取得
@@ -80,7 +80,7 @@ if st.button("レース一覧取得"):
             for race in venue["races"]:
                 race_number = race.get("number", "?")
                 race_name = race.get("name", "レース名不明")  # ★ レース名追加
-                label = f"{venue['name']} {race_number}R（{race_name}）"  # ★ 表示にレース名追加
+                label = f"{venue['name']} {race_number}R（{race_name}）"
                 races.append((label, race["id"], race_name))  # ★ レース名も保存
 
         st.session_state["races"] = races
@@ -93,7 +93,7 @@ if "races" in st.session_state:
     # 単レース分析
     if st.button("このレースだけ分析"):
         race_id = [rid for label, rid, rname in st.session_state["races"] if label == selected_race][0]
-        race_name = [rname for label, rid, rname in st.session_state["races"] if label == selected_race][0]  # ★ レース名取得
+        race_name = [rname for label, rid, rname in st.session_state["races"] if label == selected_race][0]
 
         data = get_entries(race_id)
         ranking = calc_ev(data["entries"], winrate_threshold, ev_threshold)
@@ -101,7 +101,7 @@ if "races" in st.session_state:
         if ranking:
             df = pd.DataFrame(ranking)
             df["レース"] = selected_race
-            df["レース名"] = race_name  # ★ レース名列追加
+            df["レース名"] = race_name
 
             df = df[["レース", "レース名", "馬番", "馬名", "オッズ", "人気", "勝率(%)", "単勝期待値"]]
 
@@ -126,7 +126,7 @@ if "races" in st.session_state and st.button("全レース分析（全件）"):
 
         for r in ranking:
             r["レース"] = label
-            r["レース名"] = race_name  # ★ レース名追加
+            r["レース名"] = race_name
             all_rows.append(r)
 
     if all_rows:
@@ -155,7 +155,7 @@ if "races" in st.session_state and st.button("全レース 単勝期待値 上�
 
         for r in top5:
             r["レース"] = label
-            r["レース名"] = race_name  # ★ レース名追加
+            r["レース名"] = race_name
             top_rows.append(r)
 
     if top_rows:
