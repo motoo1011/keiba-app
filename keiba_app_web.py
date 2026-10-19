@@ -79,8 +79,9 @@ if st.button("レース一覧取得"):
         for venue in race_list["venues"]:
             for race in venue["races"]:
                 race_number = race.get("number", "?")
-                label = f"{venue['name']} {race_number}R"
-                races.append((label, race["id"]))
+                race_name = race.get("name", "レース名不明")  # ★ レース名追加
+                label = f"{venue['name']} {race_number}R（{race_name}）"  # ★ 表示にレース名追加
+                races.append((label, race["id"], race_name))  # ★ レース名も保存
 
         st.session_state["races"] = races
 
@@ -91,15 +92,18 @@ if "races" in st.session_state:
 
     # 単レース分析
     if st.button("このレースだけ分析"):
-        race_id = [rid for label, rid in st.session_state["races"] if label == selected_race][0]
+        race_id = [rid for label, rid, rname in st.session_state["races"] if label == selected_race][0]
+        race_name = [rname for label, rid, rname in st.session_state["races"] if label == selected_race][0]  # ★ レース名取得
+
         data = get_entries(race_id)
         ranking = calc_ev(data["entries"], winrate_threshold, ev_threshold)
 
         if ranking:
             df = pd.DataFrame(ranking)
             df["レース"] = selected_race
+            df["レース名"] = race_name  # ★ レース名列追加
 
-            df = df[["レース", "馬番", "馬名", "オッズ", "人気", "勝率(%)", "単勝期待値"]]
+            df = df[["レース", "レース名", "馬番", "馬名", "オッズ", "人気", "勝率(%)", "単勝期待値"]]
 
             styler = df.style.apply(highlight_rows, axis=1)\
                              .format({
@@ -116,17 +120,18 @@ if "races" in st.session_state:
 if "races" in st.session_state and st.button("全レース分析（全件）"):
     all_rows = []
 
-    for label, race_id in st.session_state["races"]:
+    for label, race_id, race_name in st.session_state["races"]:
         data = get_entries(race_id)
         ranking = calc_ev(data["entries"], winrate_threshold, ev_threshold)
 
         for r in ranking:
             r["レース"] = label
+            r["レース名"] = race_name  # ★ レース名追加
             all_rows.append(r)
 
     if all_rows:
         df = pd.DataFrame(all_rows)
-        df = df[["レース", "馬番", "馬名", "オッズ", "人気", "勝率(%)", "単勝期待値"]]
+        df = df[["レース", "レース名", "馬番", "馬名", "オッズ", "人気", "勝率(%)", "単勝期待値"]]
 
         styler = df.style.apply(highlight_rows, axis=1)\
                          .format({
@@ -143,18 +148,19 @@ if "races" in st.session_state and st.button("全レース分析（全件）"):
 if "races" in st.session_state and st.button("全レース 単勝期待値 上位1〜5位"):
     top_rows = []
 
-    for label, race_id in st.session_state["races"]:
+    for label, race_id, race_name in st.session_state["races"]:
         data = get_entries(race_id)
         ranking = calc_ev(data["entries"], winrate_threshold, ev_threshold)
         top5 = ranking[:5]
 
         for r in top5:
             r["レース"] = label
+            r["レース名"] = race_name  # ★ レース名追加
             top_rows.append(r)
 
     if top_rows:
         df = pd.DataFrame(top_rows)
-        df = df[["レース", "馬番", "馬名", "オッズ", "人気", "勝率(%)", "単勝期待値"]]
+        df = df[["レース", "レース名", "馬番", "馬名", "オッズ", "人気", "勝率(%)", "単勝期待値"]]
 
         styler = df.style.apply(highlight_rows, axis=1)\
                          .format({
