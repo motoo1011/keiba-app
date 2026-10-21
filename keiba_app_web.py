@@ -49,7 +49,7 @@ def highlight_rows(row):
 
 # UI
 st.set_page_config(page_title="🐎競馬分析アプリ", layout="wide")
-st.title("🐎競馬分析アプリ（スマホ対応 Web版）")
+st.title("🐎競馬分析アプリ")
 
 date = st.text_input("開催日 (YYYY-MM-DD)", "2026-10-18")
 winrate_threshold = st.selectbox("勝率閾値（％以上）", [0, 5, 10, 15, 20, 25, 30]) / 100
@@ -89,7 +89,6 @@ if "races" in st.session_state:
 
     # 単レース分析
     if st.button("このレースだけ分析"):
-        # 選択されたレースのID・表示用レース・レース名を取得
         for label, rid, race_disp, race_name in st.session_state["races"]:
             if label == selected_race:
                 race_id = rid
@@ -103,7 +102,6 @@ if "races" in st.session_state:
         if ranking:
             df = pd.DataFrame(ranking)
 
-            # レース列とレース名列を分けて追加
             df["レース"] = race_display
             df["レース名"] = race_name_display
 
