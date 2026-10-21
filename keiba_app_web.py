@@ -50,14 +50,18 @@ def calc_ev(entries, winrate_threshold, ev_threshold):
             jockey_win_rate = None
             jockey_place_rate = None
 
+        # None のときは空欄にする（★今回のエラー対策）
+        jockey_win_rate_display = jockey_win_rate * 100 if jockey_win_rate else ""
+        jockey_place_rate_display = jockey_place_rate * 100 if jockey_place_rate else ""
+
         # 閾値フィルタ（>= に統一）
         if win >= winrate_threshold and ev >= ev_threshold:
             results.append({
                 "馬番": e["number"],
                 "馬名": e["name"],
                 "騎手": jockey,
-                "騎手勝率(%)": jockey_win_rate * 100 if jockey_win_rate else None,
-                "騎手複勝率(%)": jockey_place_rate * 100 if jockey_place_rate else None,
+                "騎手勝率(%)": jockey_win_rate_display,
+                "騎手複勝率(%)": jockey_place_rate_display,
                 "オッズ": odds,
                 "人気": e["popularity"],
                 "勝率(%)": win * 100,
