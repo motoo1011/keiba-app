@@ -92,11 +92,13 @@ if st.button("レース一覧取得"):
 
         st.session_state["races"] = races
 
-# ★ 略称一覧抽出ボタン
-if "races" in st.session_state and st.button("騎手略称一覧を抽出"):
-    shorts = collect_jockey_short_names(st.session_state["races"])
-    st.write("抽出された略称一覧：")
-    st.write(shorts)
+# ★★★ ここに配置すると必ずボタンが出る ★★★
+if "races" in st.session_state:
+    st.subheader("🔍 騎手略称一覧の抽出")
+    if st.button("騎手略称一覧を抽出"):
+        shorts = collect_jockey_short_names(st.session_state["races"])
+        st.write("抽出された略称一覧：")
+        st.write(shorts)
 
 # レース選択
 if "races" in st.session_state:
