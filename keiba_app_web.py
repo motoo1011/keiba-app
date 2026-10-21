@@ -23,22 +23,22 @@ def calc_ev(entries, winrate_threshold, ev_threshold):
         odds = float(e["odds"])
         ev = win * odds
 
-        jockey = e.get("jockey", "不明")  # 3文字略称のまま
+        jockey = e.get("jockey", "不明")
 
-        if win >= winrate_threshold and ev >= ev_threshold:
-            results.append({
-                "馬番": e["number"],
-                "馬名": e["name"],
-                "騎手": jockey,
-                "オッズ": odds,
-                "人気": e["popularity"],
-                "勝率(%)": win * 100,
-                "単勝期待値": ev
-            })
+        results.append({
+            "馬番": e["number"],
+            "馬名": e["name"],
+            "騎手": jockey,
+            "オッズ": odds,
+            "人気": e["popularity"],
+            "勝率(%)": win * 100,
+            "単勝期待値": ev,
+            "逃げ馬指数": e.get("nigeIndex", 0)
+        })
 
     return sorted(results, key=lambda x: x["単勝期待値"], reverse=True)
 
-# 色付け
+# EV色付け（背景）
 def highlight_rows(row):
     if row["単勝期待値"] >= 2.0:
         return ["background-color: #d0ffd0"] * len(row)
@@ -46,6 +46,37 @@ def highlight_rows(row):
         return ["background-color: #ffd0d0"] * len(row)
     else:
         return [""] * len(row)
+
+# 勝率・逃げ馬指数の順位色付け（文字色：金銀銅）
+def color_top3(df):
+    # 勝率順位
+    win_sorted = df["勝率(%)"].sort_values(ascending=False)
+    win_rank = {
+        win_sorted.index[0]: "#DAA520",  # ゴールド
+        win_sorted.index[1]: "#C0C0C0",  # シルバー
+        win_sorted.index[2]: "#CD7F32"   # ブロンズ
+    } if len(win_sorted) >= 3 else {}
+
+    # 逃げ馬指数順位
+    nige_sorted = df["逃げ馬指数"].sort_values(ascending=False)
+    nige_rank = {
+        nige_sorted.index[0]: "#DAA520",
+        nige_sorted.index[1]: "#C0C0C0",
+        nige_sorted.index[2]: "#CD7F32"
+    } if len(nige_sorted) >= 3 else {}
+
+    def highlight_val(val, row_index, col_name):
+        if col_name == "勝率(%)" and row_index in win_rank:
+            return f"<span style='color:{win_rank[row_index]}'>{val:.1f}</span>"
+        if col_name == "逃げ馬指数" and row_index in nige_rank:
+            return f"<span style='color:{nige_rank[row_index]}'>{val:.1f}</span>"
+        return f"{val:.1f}"
+
+    formats = {}
+    for col in ["勝率(%)", "逃げ馬指数"]:
+        formats[col] = lambda val, idx=None, col_name=col: highlight_val(val, idx, col_name)
+
+    return formats
 
 # UI
 st.set_page_config(page_title="🐎競馬分析アプリ", layout="wide")
@@ -66,7 +97,6 @@ if st.button("レース一覧取得"):
 
         races = []
         for venue in race_list["venues"]:
-            # ★ここで自動番号付与（?R完全排除）
             for idx, race in enumerate(venue["races"], start=1):
                 race_number = race.get("number", idx)
 
@@ -104,14 +134,23 @@ if "races" in st.session_state:
             df = df[[
                 "レース", "レース名",
                 "馬番", "馬名", "騎手",
-                "オッズ", "人気", "勝率(%)", "単勝期待値"
+                "オッズ", "人気", "勝率(%)", "単勝期待値",
+                "逃げ馬指数"
             ]]
 
-            styler = df.style.apply(highlight_rows, axis=1).format({
-                "オッズ": "{:.1f}",
-                "勝率(%)": "{:.1f}",
-                "単勝期待値": "{:.2f}"
-            })
+            formats = color_top3(df)
+
+            styler = (
+                df.style
+                .apply(highlight_rows, axis=1)
+                .format({
+                    "オッズ": "{:.1f}",
+                    "人気": "{:.0f}",
+                    "単勝期待値": "{:.2f}",
+                    "勝率(%)": lambda v, idx: formats["勝率(%)"](v, idx),
+                    "逃げ馬指数": lambda v, idx: formats["逃げ馬指数"](v, idx)
+                })
+            )
 
             st.dataframe(styler, use_container_width=True)
         else:
@@ -135,14 +174,23 @@ if "races" in st.session_state and st.button("全レース分析（全件）"):
         df = df[[
             "レース", "レース名",
             "馬番", "馬名", "騎手",
-            "オッズ", "人気", "勝率(%)", "単勝期待値"
+            "オッズ", "人気", "勝率(%)", "単勝期待値",
+            "逃げ馬指数"
         ]]
 
-        styler = df.style.apply(highlight_rows, axis=1).format({
-            "オッズ": "{:.1f}",
-            "勝率(%)": "{:.1f}",
-            "単勝期待値": "{:.2f}"
-        })
+        formats = color_top3(df)
+
+        styler = (
+            df.style
+            .apply(highlight_rows, axis=1)
+            .format({
+                "オッズ": "{:.1f}",
+                "人気": "{:.0f}",
+                "単勝期待値": "{:.2f}",
+                "勝率(%)": lambda v, idx: formats["勝率(%)"](v, idx),
+                "逃げ馬指数": lambda v, idx: formats["逃げ馬指数"](v, idx)
+            })
+        )
 
         st.dataframe(styler, use_container_width=True)
     else:
@@ -167,14 +215,23 @@ if "races" in st.session_state and st.button("全レース 単勝期待値 上�
         df = df[[
             "レース", "レース名",
             "馬番", "馬名", "騎手",
-            "オッズ", "人気", "勝率(%)", "単勝期待値"
+            "オッズ", "人気", "勝率(%)", "単勝期待値",
+            "逃げ馬指数"
         ]]
 
-        styler = df.style.apply(highlight_rows, axis=1).format({
-            "オッズ": "{:.1f}",
-            "勝率(%)": "{:.1f}",
-            "単勝期待値": "{:.2f}"
-        })
+        formats = color_top3(df)
+
+        styler = (
+            df.style
+            .apply(highlight_rows, axis=1)
+            .format({
+                "オッズ": "{:.1f}",
+                "人気": "{:.0f}",
+                "単勝期待値": "{:.2f}",
+                "勝率(%)": lambda v, idx: formats["勝率(%)"](v, idx),
+                "逃げ馬指数": lambda v, idx: formats["逃げ馬指数"](v, idx)
+            })
+        )
 
         st.dataframe(styler, use_container_width=True)
     else:
