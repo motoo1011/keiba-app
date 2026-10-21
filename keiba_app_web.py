@@ -23,7 +23,7 @@ def calc_ev(entries, winrate_threshold, ev_threshold):
         odds = float(e["odds"])
         ev = win * odds
 
-        jockey = e.get("jockey", "不明")  # 3文字表記のまま
+        jockey = e.get("jockey", "不明")  # 3文字略称のまま
 
         if win >= winrate_threshold and ev >= ev_threshold:
             results.append({
@@ -48,8 +48,8 @@ def highlight_rows(row):
         return [""] * len(row)
 
 # UI
-st.set_page_config(page_title="競馬分析アプリ", layout="wide")
-st.title("🐎 競馬分析アプリ")
+st.set_page_config(page_title="🐎競馬分析アプリ", layout="wide")
+st.title("🐎競馬分析アプリ（スマホ対応 Web版）")
 
 date = st.text_input("開催日 (YYYY-MM-DD)", "2026-10-18")
 winrate_threshold = st.selectbox("勝率閾値（％以上）", [0, 5, 10, 15, 20, 25, 30]) / 100
