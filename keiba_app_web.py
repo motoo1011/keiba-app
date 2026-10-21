@@ -26,7 +26,7 @@ def calc_ev(entries, winrate_threshold, ev_threshold):
         odds = float(e["odds"])
         ev = win * odds
 
-        # ★ 騎手名は略称のまま（3文字表記）
+        # ★ 騎手名は略称のまま
         jockey = e.get("jockey", "不明")
 
         if win >= winrate_threshold and ev >= ev_threshold:
@@ -72,9 +72,13 @@ if st.button("レース一覧取得"):
         for venue in race_list["venues"]:
             for race in venue["races"]:
                 race_number = race.get("number", "?")
-                race_name = race.get("name", "レース名不明")
 
-                # ★ レース名をタブに戻す（重要）
+                # ★ レース名が null の場合は raceNameShort を使う
+                race_name = race.get("name")
+                if not race_name:
+                    race_name = race.get("raceNameShort", "レース名不明")
+
+                # ★ レース選択タブに必ずレース名を表示
                 label = f"{venue['name']} {race_number}R（{race_name}）"
 
                 races.append((label, race["id"], race_name))
