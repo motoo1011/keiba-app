@@ -11,7 +11,7 @@ def get_entries(race_id):
     url = f"https://frontrunner-race.com/api/race/{race_id}/entries"
     return requests.get(url).json()
 
-# 単勝期待値計算（None対策入り）
+# 単勝期待値計算
 def calc_ev(entries, winrate_threshold, ev_threshold):
     results = []
     for e in entries:
@@ -19,16 +19,14 @@ def calc_ev(entries, winrate_threshold, ev_threshold):
         if e["predictWinRate"] is None:
             continue
 
-        win = float(e["predictWinRate"])  # 勝率（0〜1）
-
+        win = float(e["predictWinRate"])
         if e["odds"] is None:
             continue
 
         odds = float(e["odds"])
-        ev = win * odds  # 単勝期待値
+        ev = win * odds
 
-        # ★ 騎手名（フルネーム優先）
-        jockey = e.get("jockeyFullName", e.get("jockey", "不明"))
+        jockey = e.get("jockey", "不明")  # ★略称のまま（辞書作成のため）
 
         if win >= winrate_threshold and ev >= ev_threshold:
             results.append({
@@ -43,7 +41,7 @@ def calc_ev(entries, winrate_threshold, ev_threshold):
 
     return sorted(results, key=lambda x: x["単勝期待値"], reverse=True)
 
-# 色付け関数
+# 色付け
 def highlight_rows(row):
     if row["単勝期待値"] >= 2.0:
         return ["background-color: #d0ffd0"] * len(row)
@@ -52,20 +50,25 @@ def highlight_rows(row):
     else:
         return [""] * len(row)
 
-# Streamlit UI
-st.set_page_config(page_title="競馬分析アプリ（スマホ対応）", layout="wide")
+# ★ 略称一覧抽出関数
+def collect_jockey_short_names(races):
+    shorts = set()
+    for label, race_id, race_name in races:
+        data = get_entries(race_id)
+        for e in data["entries"]:
+            short = e.get("jockey")
+            if short:
+                shorts.add(short)
+    return sorted(list(shorts))
 
+
+# UI
+st.set_page_config(page_title="競馬分析アプリ（スマホ対応）", layout="wide")
 st.title("🐎 競馬分析アプリ（スマホ対応 Web版）")
 
-# 入力
 date = st.text_input("開催日 (YYYY-MM-DD)", "2026-10-18")
-
 winrate_threshold = st.selectbox("勝率閾値（％以上）", [0, 5, 10, 15, 20, 25, 30]) / 100
-
-ev_threshold = float(st.selectbox(
-    "単勝期待値閾値（以上）",
-    ["0"] + [f"{x/10:.1f}" for x in range(10, 31)]
-))
+ev_threshold = float(st.selectbox("単勝期待値閾値（以上）", ["0"] + [f"{x/10:.1f}" for x in range(10, 31)]))
 
 # レース一覧取得
 if st.button("レース一覧取得"):
@@ -81,10 +84,19 @@ if st.button("レース一覧取得"):
             for race in venue["races"]:
                 race_number = race.get("number", "?")
                 race_name = race.get("name", "レース名不明")
-                label = f"{venue['name']} {race_number}R"
+
+                # ★レース名をタブに戻す
+                label = f"{venue['name']} {race_number}R（{race_name}）"
+
                 races.append((label, race["id"], race_name))
 
         st.session_state["races"] = races
+
+# ★ 略称一覧抽出ボタン
+if "races" in st.session_state and st.button("騎手略称一覧を抽出"):
+    shorts = collect_jockey_short_names(st.session_state["races"])
+    st.write("抽出された略称一覧：")
+    st.write(shorts)
 
 # レース選択
 if "races" in st.session_state:
@@ -94,7 +106,6 @@ if "races" in st.session_state:
     # 単レース分析
     if st.button("このレースだけ分析"):
         race_id = [rid for label, rid, rname in st.session_state["races"] if label == selected_race][0]
-        race_name = [rname for label, rid, rname in st.session_state["races"] if label == selected_race][0]
 
         data = get_entries(race_id)
         ranking = calc_ev(data["entries"], winrate_threshold, ev_threshold)
@@ -102,8 +113,7 @@ if "races" in st.session_state:
         if ranking:
             df = pd.DataFrame(ranking)
 
-            # ★ レース名を統合
-            df["レース"] = f"{selected_race}（{race_name}）"
+            df["レース"] = selected_race  # ★レース名統合済み
 
             df = df[[
                 "レース",
@@ -111,18 +121,17 @@ if "races" in st.session_state:
                 "オッズ", "人気", "勝率(%)", "単勝期待値"
             ]]
 
-            styler = df.style.apply(highlight_rows, axis=1)\
-                             .format({
-                                 "オッズ": "{:.1f}",
-                                 "勝率(%)": "{:.1f}",
-                                 "単勝期待値": "{:.2f}"
-                             })
+            styler = df.style.apply(highlight_rows, axis=1).format({
+                "オッズ": "{:.1f}",
+                "勝率(%)": "{:.1f}",
+                "単勝期待値": "{:.2f}"
+            })
 
             st.dataframe(styler, use_container_width=True)
         else:
             st.warning("条件に合う馬がいません")
 
-# 全レース分析（全件）
+# 全レース分析
 if "races" in st.session_state and st.button("全レース分析（全件）"):
     all_rows = []
 
@@ -131,7 +140,7 @@ if "races" in st.session_state and st.button("全レース分析（全件）"):
         ranking = calc_ev(data["entries"], winrate_threshold, ev_threshold)
 
         for r in ranking:
-            r["レース"] = f"{label}（{race_name}）"
+            r["レース"] = label
             all_rows.append(r)
 
     if all_rows:
@@ -142,18 +151,17 @@ if "races" in st.session_state and st.button("全レース分析（全件）"):
             "オッズ", "人気", "勝率(%)", "単勝期待値"
         ]]
 
-        styler = df.style.apply(highlight_rows, axis=1)\
-                         .format({
-                             "オッズ": "{:.1f}",
-                             "勝率(%)": "{:.1f}",
-                             "単勝期待値": "{:.2f}"
-                         })
+        styler = df.style.apply(highlight_rows, axis=1).format({
+            "オッズ": "{:.1f}",
+            "勝率(%)": "{:.1f}",
+            "単勝期待値": "{:.2f}"
+        })
 
         st.dataframe(styler, use_container_width=True)
     else:
         st.warning("条件に合う馬がいません")
 
-# EV上位1〜5位
+# 上位1〜5位
 if "races" in st.session_state and st.button("全レース 単勝期待値 上位1〜5位"):
     top_rows = []
 
@@ -163,7 +171,7 @@ if "races" in st.session_state and st.button("全レース 単勝期待値 上�
         top5 = ranking[:5]
 
         for r in top5:
-            r["レース"] = f"{label}（{race_name}）"
+            r["レース"] = label
             top_rows.append(r)
 
     if top_rows:
@@ -174,12 +182,11 @@ if "races" in st.session_state and st.button("全レース 単勝期待値 上�
             "オッズ", "人気", "勝率(%)", "単勝期待値"
         ]]
 
-        styler = df.style.apply(highlight_rows, axis=1)\
-                         .format({
-                             "オッズ": "{:.1f}",
-                             "勝率(%)": "{:.1f}",
-                             "単勝期待値": "{:.2f}"
-                         })
+        styler = df.style.apply(highlight_rows, axis=1).format({
+            "オッズ": "{:.1f}",
+            "勝率(%)": "{:.1f}",
+            "単勝期待値": "{:.2f}"
+        })
 
         st.dataframe(styler, use_container_width=True)
     else:
