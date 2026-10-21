@@ -26,7 +26,8 @@ def calc_ev(entries, winrate_threshold, ev_threshold):
         odds = float(e["odds"])
         ev = win * odds
 
-        jockey = e.get("jockey", "不明")  # ★略称のまま（辞書作成のため）
+        # ★ 騎手名は略称のまま（3文字表記）
+        jockey = e.get("jockey", "不明")
 
         if win >= winrate_threshold and ev >= ev_threshold:
             results.append({
@@ -49,18 +50,6 @@ def highlight_rows(row):
         return ["background-color: #ffd0d0"] * len(row)
     else:
         return [""] * len(row)
-
-# ★ 略称一覧抽出関数
-def collect_jockey_short_names(races):
-    shorts = set()
-    for label, race_id, race_name in races:
-        data = get_entries(race_id)
-        for e in data["entries"]:
-            short = e.get("jockey")
-            if short:
-                shorts.add(short)
-    return sorted(list(shorts))
-
 
 # UI
 st.set_page_config(page_title="競馬分析アプリ（スマホ対応）", layout="wide")
@@ -85,20 +74,12 @@ if st.button("レース一覧取得"):
                 race_number = race.get("number", "?")
                 race_name = race.get("name", "レース名不明")
 
-                # ★レース名をタブに戻す
+                # ★ レース名をタブに戻す（重要）
                 label = f"{venue['name']} {race_number}R（{race_name}）"
 
                 races.append((label, race["id"], race_name))
 
         st.session_state["races"] = races
-
-# ★★★ ここに配置すると必ずボタンが出る ★★★
-if "races" in st.session_state:
-    st.subheader("🔍 騎手略称一覧の抽出")
-    if st.button("騎手略称一覧を抽出"):
-        shorts = collect_jockey_short_names(st.session_state["races"])
-        st.write("抽出された略称一覧：")
-        st.write(shorts)
 
 # レース選択
 if "races" in st.session_state:
@@ -115,7 +96,7 @@ if "races" in st.session_state:
         if ranking:
             df = pd.DataFrame(ranking)
 
-            df["レース"] = selected_race  # ★レース名統合済み
+            df["レース"] = selected_race
 
             df = df[[
                 "レース",
