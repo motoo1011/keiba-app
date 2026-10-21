@@ -66,18 +66,16 @@ if st.button("レース一覧取得"):
 
         races = []
         for venue in race_list["venues"]:
-            for race in venue["races"]:
-                race_number = race.get("number", "?")
+            # ★ここで自動番号付与（?R完全排除）
+            for idx, race in enumerate(venue["races"], start=1):
+                race_number = race.get("number", idx)
 
-                # レース名がないときは短縮名を使う
                 race_name = race.get("name")
                 if not race_name:
                     race_name = race.get("raceNameShort", "レース名不明")
 
-                # ドロップダウンにはレース名も表示
                 label = f"{venue['name']} {race_number}R（{race_name}）"
 
-                # レース列用は「場＋R」、レース名列用は race_name
                 races.append((label, race["id"], f"{venue['name']} {race_number}R", race_name))
 
         st.session_state["races"] = races
@@ -87,7 +85,6 @@ if "races" in st.session_state:
     race_labels = [r[0] for r in st.session_state["races"]]
     selected_race = st.selectbox("レースを選択", race_labels)
 
-    # 単レース分析
     if st.button("このレースだけ分析"):
         for label, rid, race_disp, race_name in st.session_state["races"]:
             if label == selected_race:
@@ -101,7 +98,6 @@ if "races" in st.session_state:
 
         if ranking:
             df = pd.DataFrame(ranking)
-
             df["レース"] = race_display
             df["レース名"] = race_name_display
 
