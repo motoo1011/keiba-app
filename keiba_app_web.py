@@ -184,4 +184,4 @@ if "races" in st.session_state and st.button("全レース 単勝期待値 上�
 
         st.dataframe(styler, use_container_width=True)
     else:
-        st.warning("条件に合う馬がいません"
+        st.warning("条件に合う馬がいません")
