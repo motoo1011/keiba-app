@@ -25,12 +25,11 @@ def calc_ev(entries, winrate_threshold, ev_threshold):
             continue
 
         odds = float(e["odds"])
-        ev = win * odds  # ★ 単勝期待値
+        ev = win * odds  # 単勝期待値
 
         # ★ 騎手名（フルネーム優先）
         jockey = e.get("jockeyFullName", e.get("jockey", "不明"))
 
-        # 閾値フィルタ（>= に統一）
         if win >= winrate_threshold and ev >= ev_threshold:
             results.append({
                 "馬番": e["number"],
@@ -61,10 +60,8 @@ st.title("🐎 競馬分析アプリ（スマホ対応 Web版）")
 # 入力
 date = st.text_input("開催日 (YYYY-MM-DD)", "2026-10-18")
 
-# 勝率閾値（0％以上）
 winrate_threshold = st.selectbox("勝率閾値（％以上）", [0, 5, 10, 15, 20, 25, 30]) / 100
 
-# 単勝期待値閾値（0 と 1.0〜3.0）
 ev_threshold = float(st.selectbox(
     "単勝期待値閾値（以上）",
     ["0"] + [f"{x/10:.1f}" for x in range(10, 31)]
@@ -84,7 +81,7 @@ if st.button("レース一覧取得"):
             for race in venue["races"]:
                 race_number = race.get("number", "?")
                 race_name = race.get("name", "レース名不明")
-                label = f"{venue['name']} {race_number}R（{race_name}）"
+                label = f"{venue['name']} {race_number}R"
                 races.append((label, race["id"], race_name))
 
         st.session_state["races"] = races
@@ -104,11 +101,12 @@ if "races" in st.session_state:
 
         if ranking:
             df = pd.DataFrame(ranking)
-            df["レース"] = selected_race
-            df["レース名"] = race_name
+
+            # ★ レース名を統合
+            df["レース"] = f"{selected_race}（{race_name}）"
 
             df = df[[
-                "レース", "レース名",
+                "レース",
                 "馬番", "馬名", "騎手",
                 "オッズ", "人気", "勝率(%)", "単勝期待値"
             ]]
@@ -133,14 +131,13 @@ if "races" in st.session_state and st.button("全レース分析（全件）"):
         ranking = calc_ev(data["entries"], winrate_threshold, ev_threshold)
 
         for r in ranking:
-            r["レース"] = label
-            r["レース名"] = race_name
+            r["レース"] = f"{label}（{race_name}）"
             all_rows.append(r)
 
     if all_rows:
         df = pd.DataFrame(all_rows)
         df = df[[
-            "レース", "レース名",
+            "レース",
             "馬番", "馬名", "騎手",
             "オッズ", "人気", "勝率(%)", "単勝期待値"
         ]]
@@ -166,14 +163,13 @@ if "races" in st.session_state and st.button("全レース 単勝期待値 上�
         top5 = ranking[:5]
 
         for r in top5:
-            r["レース"] = label
-            r["レース名"] = race_name
+            r["レース"] = f"{label}（{race_name}）"
             top_rows.append(r)
 
     if top_rows:
         df = pd.DataFrame(top_rows)
         df = df[[
-            "レース", "レース名",
+            "レース",
             "馬番", "馬名", "騎手",
             "オッズ", "人気", "勝率(%)", "単勝期待値"
         ]]
