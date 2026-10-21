@@ -11,14 +11,6 @@ def get_entries(race_id):
     url = f"https://frontrunner-race.com/api/race/{race_id}/entries"
     return requests.get(url).json()
 
-# ★ 騎手成績 API（勝率・複勝率）
-def get_jockey_stats(jockey_id):
-    url = f"https://frontrunner-race.com/api/jockey/{jockey_id}/stats"
-    res = requests.get(url)
-    if res.status_code != 200:
-        return {"winRate": None, "placeRate": None}
-    return res.json()
-
 # 単勝期待値計算（None対策入り）
 def calc_ev(entries, winrate_threshold, ev_threshold):
     results = []
@@ -38,30 +30,12 @@ def calc_ev(entries, winrate_threshold, ev_threshold):
         # ★ 騎手名（フルネーム優先）
         jockey = e.get("jockeyFullName", e.get("jockey", "不明"))
 
-        # ★ 騎手ID（成績取得に使う）
-        jockey_id = e.get("jockeyId", None)
-
-        # ★ 騎手成績取得（勝率・複勝率）
-        if jockey_id:
-            stats = get_jockey_stats(jockey_id)
-            jockey_win_rate = stats.get("winRate", None)
-            jockey_place_rate = stats.get("placeRate", None)
-        else:
-            jockey_win_rate = None
-            jockey_place_rate = None
-
-        # None のときは空欄にする（★今回のエラー対策）
-        jockey_win_rate_display = jockey_win_rate * 100 if jockey_win_rate else ""
-        jockey_place_rate_display = jockey_place_rate * 100 if jockey_place_rate else ""
-
         # 閾値フィルタ（>= に統一）
         if win >= winrate_threshold and ev >= ev_threshold:
             results.append({
                 "馬番": e["number"],
                 "馬名": e["name"],
                 "騎手": jockey,
-                "騎手勝率(%)": jockey_win_rate_display,
-                "騎手複勝率(%)": jockey_place_rate_display,
                 "オッズ": odds,
                 "人気": e["popularity"],
                 "勝率(%)": win * 100,
@@ -136,14 +110,11 @@ if "races" in st.session_state:
             df = df[[
                 "レース", "レース名",
                 "馬番", "馬名", "騎手",
-                "騎手勝率(%)", "騎手複勝率(%)",
                 "オッズ", "人気", "勝率(%)", "単勝期待値"
             ]]
 
             styler = df.style.apply(highlight_rows, axis=1)\
                              .format({
-                                 "騎手勝率(%)": "{:.1f}",
-                                 "騎手複勝率(%)": "{:.1f}",
                                  "オッズ": "{:.1f}",
                                  "勝率(%)": "{:.1f}",
                                  "単勝期待値": "{:.2f}"
@@ -171,14 +142,11 @@ if "races" in st.session_state and st.button("全レース分析（全件）"):
         df = df[[
             "レース", "レース名",
             "馬番", "馬名", "騎手",
-            "騎手勝率(%)", "騎手複勝率(%)",
             "オッズ", "人気", "勝率(%)", "単勝期待値"
         ]]
 
         styler = df.style.apply(highlight_rows, axis=1)\
                          .format({
-                             "騎手勝率(%)": "{:.1f}",
-                             "騎手複勝率(%)": "{:.1f}",
                              "オッズ": "{:.1f}",
                              "勝率(%)": "{:.1f}",
                              "単勝期待値": "{:.2f}"
@@ -207,14 +175,11 @@ if "races" in st.session_state and st.button("全レース 単勝期待値 上�
         df = df[[
             "レース", "レース名",
             "馬番", "馬名", "騎手",
-            "騎手勝率(%)", "騎手複勝率(%)",
             "オッズ", "人気", "勝率(%)", "単勝期待値"
         ]]
 
         styler = df.style.apply(highlight_rows, axis=1)\
                          .format({
-                             "騎手勝率(%)": "{:.1f}",
-                             "騎手複勝率(%)": "{:.1f}",
                              "オッズ": "{:.1f}",
                              "勝率(%)": "{:.1f}",
                              "単勝期待値": "{:.2f}"
