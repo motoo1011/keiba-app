@@ -33,7 +33,7 @@ def calc_ev(entries, winrate_threshold, ev_threshold):
             "人気": e["popularity"],
             "勝率(%)": win * 100,
             "単勝期待値": ev,
-            "逃げ馬指数": e.get("nigeIndex", 0)   # ★逃げ指数追加
+            "逃げ馬指数": e.get("predictFirstPhaseIndex", 0)  # ★修正ポイント
         })
 
     return sorted(results, key=lambda x: x["単勝期待値"], reverse=True)
@@ -104,7 +104,7 @@ if "races" in st.session_state:
                 "レース", "レース名",
                 "馬番", "馬名", "騎手",
                 "オッズ", "人気", "勝率(%)", "単勝期待値",
-                "逃げ馬指数"   # ★追加
+                "逃げ馬指数"
             ]]
 
             styler = (
