@@ -15,19 +15,15 @@ def get_entries(race_id):
 def calc_ev(entries, winrate_threshold, ev_threshold):
     results = []
     for e in entries:
-
         if e["predictWinRate"] is None:
             continue
-
         win = float(e["predictWinRate"])
         if e["odds"] is None:
             continue
-
         odds = float(e["odds"])
         ev = win * odds
 
-        # ★ 騎手名は略称のまま
-        jockey = e.get("jockey", "不明")
+        jockey = e.get("jockey", "不明")  # 3文字表記のまま
 
         if win >= winrate_threshold and ev >= ev_threshold:
             results.append({
@@ -73,15 +69,16 @@ if st.button("レース一覧取得"):
             for race in venue["races"]:
                 race_number = race.get("number", "?")
 
-                # ★ レース名が null の場合は raceNameShort を使う
+                # レース名がないときは短縮名を使う
                 race_name = race.get("name")
                 if not race_name:
                     race_name = race.get("raceNameShort", "レース名不明")
 
-                # ★ レース選択タブに必ずレース名を表示
+                # ドロップダウンにはレース名も表示
                 label = f"{venue['name']} {race_number}R（{race_name}）"
 
-                races.append((label, race["id"], race_name))
+                # レース列用は「場＋R」、レース名列用は race_name
+                races.append((label, race["id"], f"{venue['name']} {race_number}R", race_name))
 
         st.session_state["races"] = races
 
@@ -92,7 +89,13 @@ if "races" in st.session_state:
 
     # 単レース分析
     if st.button("このレースだけ分析"):
-        race_id = [rid for label, rid, rname in st.session_state["races"] if label == selected_race][0]
+        # 選択されたレースのID・表示用レース・レース名を取得
+        for label, rid, race_disp, race_name in st.session_state["races"]:
+            if label == selected_race:
+                race_id = rid
+                race_display = race_disp
+                race_name_display = race_name
+                break
 
         data = get_entries(race_id)
         ranking = calc_ev(data["entries"], winrate_threshold, ev_threshold)
@@ -100,10 +103,12 @@ if "races" in st.session_state:
         if ranking:
             df = pd.DataFrame(ranking)
 
-            df["レース"] = selected_race
+            # レース列とレース名列を分けて追加
+            df["レース"] = race_display
+            df["レース名"] = race_name_display
 
             df = df[[
-                "レース",
+                "レース", "レース名",
                 "馬番", "馬名", "騎手",
                 "オッズ", "人気", "勝率(%)", "単勝期待値"
             ]]
@@ -122,18 +127,19 @@ if "races" in st.session_state:
 if "races" in st.session_state and st.button("全レース分析（全件）"):
     all_rows = []
 
-    for label, race_id, race_name in st.session_state["races"]:
+    for label, race_id, race_disp, race_name in st.session_state["races"]:
         data = get_entries(race_id)
         ranking = calc_ev(data["entries"], winrate_threshold, ev_threshold)
 
         for r in ranking:
-            r["レース"] = label
+            r["レース"] = race_disp
+            r["レース名"] = race_name
             all_rows.append(r)
 
     if all_rows:
         df = pd.DataFrame(all_rows)
         df = df[[
-            "レース",
+            "レース", "レース名",
             "馬番", "馬名", "騎手",
             "オッズ", "人気", "勝率(%)", "単勝期待値"
         ]]
@@ -152,19 +158,20 @@ if "races" in st.session_state and st.button("全レース分析（全件）"):
 if "races" in st.session_state and st.button("全レース 単勝期待値 上位1〜5位"):
     top_rows = []
 
-    for label, race_id, race_name in st.session_state["races"]:
+    for label, race_id, race_disp, race_name in st.session_state["races"]:
         data = get_entries(race_id)
         ranking = calc_ev(data["entries"], winrate_threshold, ev_threshold)
         top5 = ranking[:5]
 
         for r in top5:
-            r["レース"] = label
+            r["レース"] = race_disp
+            r["レース名"] = race_name
             top_rows.append(r)
 
     if top_rows:
         df = pd.DataFrame(top_rows)
         df = df[[
-            "レース",
+            "レース", "レース名",
             "馬番", "馬名", "騎手",
             "オッズ", "人気", "勝率(%)", "単勝期待値"
         ]]
@@ -177,4 +184,4 @@ if "races" in st.session_state and st.button("全レース 単勝期待値 上�
 
         st.dataframe(styler, use_container_width=True)
     else:
-        st.warning("条件に合う馬がいません")
+        st.warning("条件に合う馬がいません"
