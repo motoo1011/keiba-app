@@ -12,24 +12,9 @@ def get_entries(race_id):
     url = f"https://frontrunner-race.com/api/race/{race_id}/entries"
     return requests.get(url).json()
 
-# ★重賞・OP・L だけ表示するクラス抽出
+# ★重賞・OP・L を正しく判定するクラス抽出
 def extract_class(class_name, grade):
-    if class_name:
-        # 重賞
-        if "GⅠ" in class_name:
-            return "GⅠ"
-        if "GⅡ" in class_name:
-            return "GⅡ"
-        if "GⅢ" in class_name:
-            return "GⅢ"
-
-        # OP / L
-        if "OP" in class_name:
-            return "OP"
-        if "L" in class_name:
-            return "L"
-
-    # grade が G1/G2/G3 の場合
+    # grade 優先（重賞・L）
     if grade:
         if grade == "G1":
             return "GⅠ"
@@ -37,8 +22,15 @@ def extract_class(class_name, grade):
             return "GⅡ"
         if grade == "G3":
             return "GⅢ"
+        if grade == "L":
+            return "L"
 
-    # ★条件戦は非表示
+    # OP（オープン）判定：grade が空で className に「オープン」
+    if class_name:
+        if "オープン" in class_name and (not grade):
+            return "OP"
+
+    # 条件戦は非表示
     return ""
 
 # 単勝期待値計算
@@ -111,7 +103,6 @@ if st.button("レース一覧取得"):
                 race_number = race.get("raceNumber", idx)
                 race_name = race.get("name") or race.get("nameShort", "レース名不明")
 
-                # ★className と grade を使ってクラス抽出
                 race_class = extract_class(
                     race.get("className"),
                     race.get("grade")
