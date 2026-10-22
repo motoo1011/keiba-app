@@ -12,17 +12,17 @@ def get_entries(race_id):
     url = f"https://frontrunner-race.com/api/race/{race_id}/entries"
     return requests.get(url).json()
 
-# ★レースクラスをAPI表記そのままで抽出
+# ★レースクラスをAPI表記そのままで抽出（GⅠ/GⅡ/GⅢ と G1/G2/G3 両対応）
 def extract_class(class_str):
     if class_str is None:
         return ""
 
-    # 重賞
-    if "GⅠ" in class_str:
+    # 重賞（全パターン対応）
+    if "GⅠ" in class_str or "GI" in class_str or "G1" in class_str:
         return "GⅠ"
-    if "GⅡ" in class_str:
+    if "GⅡ" in class_str or "GII" in class_str or "G2" in class_str:
         return "GⅡ"
-    if "GⅢ" in class_str:
+    if "GⅢ" in class_str or "GIII" in class_str or "G3" in class_str:
         return "GⅢ"
 
     # オープン・リステッド
