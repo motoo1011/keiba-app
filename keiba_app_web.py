@@ -132,3 +132,134 @@ if "races" in st.session_state:
                 race_id = rid
                 race_display = race_disp
                 race_name_display = race_name
+                break
+
+        data = get_entries(race_id)
+        ranking = calc_ev(data["entries"], winrate_threshold, ev_threshold)
+
+        if ranking:
+            df = pd.DataFrame(ranking)
+            df["レース"] = race_display
+            df["レース名"] = race_name_display
+
+            df = df[[
+                "レース", "レース名",
+                "馬番", "馬名", "騎手",
+                "オッズ", "人気", "勝率(%)", "単勝期待値",
+                "逃げ馬指数"
+            ]]
+
+            styler = (
+                df.style
+                .apply(highlight_rows, axis=1)
+                .format({
+                    "オッズ": "{:.1f}",
+                    "人気": "{:.0f}",
+                    "勝率(%)": "{:.1f}",
+                    "単勝期待値": "{:.2f}",
+                    "逃げ馬指数": "{:.1f}"
+                })
+            )
+
+            st.dataframe(styler, use_container_width=True)
+        else:
+            st.warning("条件に合う馬がいません")
+
+# 全レース分析
+if "races" in st.session_state and st.button("全レース分析（全件）"):
+    all_rows = []
+
+    for label, race_id, race_disp, race_name in st.session_state["races"]:
+        data = get_entries(race_id)
+        ranking = calc_ev(data["entries"], winrate_threshold, ev_threshold)
+
+        for r in ranking:
+            r["レース"] = race_disp
+            r["レース名"] = race_name
+            all_rows.append(r)
+
+    if all_rows:
+        df = pd.DataFrame(all_rows)
+
+        df["venue"] = df["レース"].str.split().str[0]
+        df["race_num"] = df["レース"].str.extract(r"(\d+)R").astype(int)
+
+        df["venue_order"] = df["venue"].apply(
+            lambda v: st.session_state["venue_order"].index(v)
+            if v in st.session_state["venue_order"] else 999
+        )
+
+        df = df.sort_values(["venue_order", "race_num"])
+
+        df = df[[
+            "レース", "レース名",
+            "馬番", "馬名", "騎手",
+            "オッズ", "人気", "勝率(%)", "単勝期待値",
+            "逃げ馬指数"
+        ]]
+
+        styler = (
+            df.style
+            .apply(highlight_rows, axis=1)
+            .format({
+                    "オッズ": "{:.1f}",
+                    "人気": "{:.0f}",
+                    "勝率(%)": "{:.1f}",
+                    "単勝期待値": "{:.2f}",
+                    "逃げ馬指数": "{:.1f}"
+            })
+        )
+
+        st.dataframe(styler, use_container_width=True)
+    else:
+        st.warning("条件に合う馬がいません")
+
+# 上位1〜5位
+if "races" in st.session_state and st.button("全レース 単勝期待値 上位1〜5位"):
+    top_rows = []
+
+    for label, race_id, race_disp, race_name in st.session_state["races"]:
+        data = get_entries(race_id)
+        ranking = calc_ev(data["entries"], winrate_threshold, ev_threshold)
+        top5 = ranking[:5]
+
+        for r in top5:
+            r["レース"] = race_disp
+            r["レース名"] = race_name
+            top_rows.append(r)
+
+    if top_rows:
+        df = pd.DataFrame(top_rows)
+
+        df["venue"] = df["レース"].str.split().str[0]
+        df["race_num"] = df["レース"].str.extract(r"(\d+)R").astype(int)
+
+        df["venue_order"] = df["venue"].apply(
+            lambda v: st.session_state["venue_order"].index(v)
+            if v in st.session_state["venue_order"] else 999
+        )
+
+        df = df.sort_values(["venue_order", "race_num"])
+
+        df = df[[
+            "レース", "レース名",
+            "馬番", "馬名", "騎手",
+            "オッズ", "人気", "勝率(%)", "単勝期待値",
+            "逃げ馬指数"
+        ]]
+
+        styler = (
+            df.style
+            .apply(highlight_rows, axis=1)
+            .format({
+                    "オッズ": "{:.1f}",
+                    "人気": "{:.0f}",
+                    "勝率(%)": "{:.1f}",
+                    "単勝期待値": "{:.2f}",
+                    "逃げ馬指数": "{:.1f}"
+            })
+        )
+
+        st.dataframe(styler, use_container_width=True)
+    else:
+        st.warning("条件に合う馬がいません")
