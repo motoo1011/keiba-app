@@ -42,6 +42,27 @@ def extract_class(class_name, grade, is_jump):
     # 条件戦は非表示
     return ""
 
+# ★グレード部分に色を付ける（Streamlit対応）
+def grade_color(row):
+    val = row["レース名"]
+
+    if "GⅠ" in val or "J・GⅠ" in val:
+        return ["color: #007bff; font-weight: bold;" if col=="レース名" else "" for col in row.index]
+
+    if "GⅡ" in val or "J・GⅡ" in val:
+        return ["color: #dc3545; font-weight: bold;" if col=="レース名" else "" for col in row.index]
+
+    if "GⅢ" in val or "J・GⅢ" in val:
+        return ["color: #28a745; font-weight: bold;" if col=="レース名" else "" for col in row.index]
+
+    if "L" in val:
+        return ["color: #6f42c1; font-weight: bold;" if col=="レース名" else "" for col in row.index]
+
+    if "OP" in val:
+        return ["color: #fd7e14; font-weight: bold;" if col=="レース名" else "" for col in row.index]
+
+    return [""] * len(row)
+
 # 単勝期待値計算
 def calc_ev(entries, winrate_threshold, ev_threshold):
     results = []
@@ -70,7 +91,7 @@ def calc_ev(entries, winrate_threshold, ev_threshold):
 
     return sorted(results, key=lambda x: x["単勝期待値"], reverse=True)
 
-# 色付け
+# 色付け（期待値）
 def highlight_rows(row):
     if row["単勝期待値"] >= 2.0:
         return ["background-color: #d0ffd0"] * len(row)
@@ -118,13 +139,13 @@ if st.button("レース一覧取得"):
                     race.get("isJump")
                 )
 
-                # ★条件戦は（）を付けない
+                # ★レース名にグレードを含める
                 if race_class:
-                    label = f"{venue['name']} {race_number}R（{race_name}・{race_class}）"
                     race_name_display = f"{race_name}（{race_class}）"
                 else:
-                    label = f"{venue['name']} {race_number}R（{race_name}）"
                     race_name_display = race_name
+
+                label = f"{venue['name']} {race_number}R（{race_name_display}）"
 
                 races.append((label, race["id"], f"{venue['name']} {race_number}R", race_name_display))
 
@@ -137,11 +158,11 @@ if "races" in st.session_state:
     selected_race = st.selectbox("レースを選択", race_labels)
 
     if st.button("このレースだけ分析"):
-        for label, rid, race_disp, race_name in st.session_state["races"]:
+        for label, rid, race_disp, race_name_display in st.session_state["races"]:
             if label == selected_race:
                 race_id = rid
                 race_display = race_disp
-                race_name_display = race_name
+                race_name_display = race_name_display
                 break
 
         data = get_entries(race_id)
@@ -162,6 +183,7 @@ if "races" in st.session_state:
             styler = (
                 df.style
                 .apply(highlight_rows, axis=1)
+                .apply(grade_color, axis=1)
                 .format({
                     "オッズ": "{:.1f}",
                     "人気": "{:.0f}",
@@ -179,13 +201,13 @@ if "races" in st.session_state:
 if "races" in st.session_state and st.button("全レース分析（全件）"):
     all_rows = []
 
-    for label, race_id, race_disp, race_name in st.session_state["races"]:
+    for label, race_id, race_disp, race_name_display in st.session_state["races"]:
         data = get_entries(race_id)
         ranking = calc_ev(data["entries"], winrate_threshold, ev_threshold)
 
         for r in ranking:
             r["レース"] = race_disp
-            r["レース名"] = race_name
+            r["レース名"] = race_name_display
             all_rows.append(r)
 
     if all_rows:
@@ -211,12 +233,13 @@ if "races" in st.session_state and st.button("全レース分析（全件）"):
         styler = (
             df.style
             .apply(highlight_rows, axis=1)
+            .apply(grade_color, axis=1)
             .format({
-                    "オッズ": "{:.1f}",
-                    "人気": "{:.0f}",
-                    "勝率(%)": "{:.1f}",
-                    "単勝期待値": "{:.2f}",
-                    "逃げ馬指数": "{:.1f}"
+                "オッズ": "{:.1f}",
+                "人気": "{:.0f}",
+                "勝率(%)": "{:.1f}",
+                "単勝期待値": "{:.2f}",
+                "逃げ馬指数": "{:.1f}"
             })
         )
 
@@ -228,14 +251,14 @@ if "races" in st.session_state and st.button("全レース分析（全件）"):
 if "races" in st.session_state and st.button("全レース 単勝期待値 上位1〜5位"):
     top_rows = []
 
-    for label, race_id, race_disp, race_name in st.session_state["races"]:
+    for label, race_id, race_disp, race_name_display in st.session_state["races"]:
         data = get_entries(race_id)
         ranking = calc_ev(data["entries"], winrate_threshold, ev_threshold)
         top5 = ranking[:5]
 
         for r in top5:
             r["レース"] = race_disp
-            r["レース名"] = race_name
+            r["レース名"] = race_name_display
             top_rows.append(r)
 
     if top_rows:
@@ -261,12 +284,13 @@ if "races" in st.session_state and st.button("全レース 単勝期待値 上�
         styler = (
             df.style
             .apply(highlight_rows, axis=1)
+            .apply(grade_color, axis=1)
             .format({
-                    "オッズ": "{:.1f}",
-                    "人気": "{:.0f}",
-                    "勝率(%)": "{:.1f}",
-                    "単勝期待値": "{:.2f}",
-                    "逃げ馬指数": "{:.1f}"
+                "オッズ": "{:.1f}",
+                "人気": "{:.0f}",
+                "勝率(%)": "{:.1f}",
+                "単勝期待値": "{:.2f}",
+                "逃げ馬指数": "{:.1f}"
             })
         )
 
