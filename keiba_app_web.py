@@ -12,23 +12,32 @@ def get_entries(race_id):
     url = f"https://frontrunner-race.com/api/race/{race_id}/entries"
     return requests.get(url).json()
 
-# ★重賞・OP・L を正しく判定するクラス抽出
-def extract_class(class_name, grade):
-    # grade 優先（重賞・L）
-    if grade:
+# ★重賞・障害重賞・OP・L を正しく判定するクラス抽出
+def extract_class(class_name, grade, is_jump):
+    # 障害重賞（J・GⅠ / J・GⅡ / J・GⅢ）
+    if is_jump:
         if grade == "G1":
-            return "GⅠ"
+            return "J・GⅠ"
         if grade == "G2":
-            return "GⅡ"
+            return "J・GⅡ"
         if grade == "G3":
-            return "GⅢ"
-        if grade == "L":
-            return "L"
+            return "J・GⅢ"
 
-    # OP（オープン）判定：grade が空で className に「オープン」
-    if class_name:
-        if "オープン" in class_name and (not grade):
-            return "OP"
+    # 平地重賞（GⅠ / GⅡ / GⅢ）
+    if grade == "G1":
+        return "GⅠ"
+    if grade == "G2":
+        return "GⅡ"
+    if grade == "G3":
+        return "GⅢ"
+
+    # L（リステッド）
+    if grade == "L":
+        return "L"
+
+    # OP（オープン）＝ grade が空 & className に「オープン」
+    if class_name and ("オープン" in class_name) and (not grade):
+        return "OP"
 
     # 条件戦は非表示
     return ""
@@ -105,7 +114,8 @@ if st.button("レース一覧取得"):
 
                 race_class = extract_class(
                     race.get("className"),
-                    race.get("grade")
+                    race.get("grade"),
+                    race.get("isJump")
                 )
 
                 # ★条件戦は（）を付けない
