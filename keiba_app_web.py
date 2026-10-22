@@ -12,6 +12,41 @@ def get_entries(race_id):
     url = f"https://frontrunner-race.com/api/race/{race_id}/entries"
     return requests.get(url).json()
 
+# ★レースクラスをAPI表記そのままで抽出
+def extract_class(class_str):
+    if class_str is None:
+        return ""
+
+    # 重賞
+    if "GⅠ" in class_str:
+        return "GⅠ"
+    if "GⅡ" in class_str:
+        return "GⅡ"
+    if "GⅢ" in class_str:
+        return "GⅢ"
+
+    # オープン・リステッド
+    if "OP" in class_str:
+        return "OP"
+    if "L" in class_str:
+        return "L"
+
+    # 条件戦
+    if "3勝" in class_str:
+        return "3勝"
+    if "2勝" in class_str:
+        return "2勝"
+    if "1勝" in class_str:
+        return "1勝"
+
+    # 未勝利・新馬
+    if "未勝利" in class_str:
+        return "未勝利"
+    if "新馬" in class_str:
+        return "新馬"
+
+    return ""
+
 # 単勝期待値計算（勝率フィルター修正済み）
 def calc_ev(entries, winrate_threshold, ev_threshold):
     results = []
@@ -74,7 +109,7 @@ if st.button("レース一覧取得"):
     else:
         st.success("レース一覧を取得しました")
 
-        # ★開催場順を動的に保存（東京・新潟・京都など全部対応）
+        # ★開催場順を動的に保存
         venue_order = [v["name"] for v in race_list["venues"]]
         st.session_state["venue_order"] = venue_order
 
@@ -83,13 +118,15 @@ if st.button("レース一覧取得"):
             for idx, race in enumerate(venue["races"], start=1):
                 race_number = race.get("number", idx)
 
-                race_name = race.get("name")
-                if not race_name:
-                    race_name = race.get("raceNameShort", "レース名不明")
+                race_name = race.get("name") or race.get("raceNameShort", "レース名不明")
 
-                label = f"{venue['name']} {race_number}R（{race_name}）"
+                # ★レースクラス抽出
+                race_class = extract_class(race.get("class"))
 
-                races.append((label, race["id"], f"{venue['name']} {race_number}R", race_name))
+                # ★レース名にクラスを追加
+                label = f"{venue['name']} {race_number}R（{race_name}・{race_class}）"
+
+                races.append((label, race["id"], f"{venue['name']} {race_number}R", f"{race_name}（{race_class}）"))
 
         # ★開催場 → レース番号で並び替え
         races.sort(key=lambda x: sort_race_label(x[0], st.session_state["venue_order"]))
@@ -159,7 +196,6 @@ if "races" in st.session_state and st.button("全レース分析（全件）"):
         df["venue"] = df["レース"].str.split().str[0]
         df["race_num"] = df["レース"].str.extract(r"(\d+)R").astype(int)
 
-        # ★動的開催場順で並び替え
         df["venue_order"] = df["venue"].apply(
             lambda v: st.session_state["venue_order"].index(v)
             if v in st.session_state["venue_order"] else 999
@@ -210,7 +246,6 @@ if "races" in st.session_state and st.button("全レース 単勝期待値 上�
         df["venue"] = df["レース"].str.split().str[0]
         df["race_num"] = df["レース"].str.extract(r"(\d+)R").astype(int)
 
-        # ★動的開催場順で並び替え
         df["venue_order"] = df["venue"].apply(
             lambda v: st.session_state["venue_order"].index(v)
             if v in st.session_state["venue_order"] else 999
