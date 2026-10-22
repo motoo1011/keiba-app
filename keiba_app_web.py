@@ -35,7 +35,7 @@ def calc_ev(entries, winrate_threshold, ev_threshold):
                 "人気": e["popularity"],
                 "勝率(%)": win * 100,
                 "単勝期待値": ev,
-                "逃げ馬指数": e.get("predictFirstPhaseIndex", 0)  # 正しいキー名
+                "逃げ馬指数": e.get("predictFirstPhaseIndex", 0)
             })
 
     return sorted(results, key=lambda x: x["単勝期待値"], reverse=True)
@@ -123,4 +123,84 @@ if "races" in st.session_state:
 
             st.dataframe(styler, use_container_width=True)
         else:
-            st
+            st.warning("条件に合う馬がいません")
+
+# 全レース分析（フィルター後の馬だけ）
+if "races" in st.session_state and st.button("全レース分析（全件）"):
+    all_rows = []
+
+    for label, race_id, race_disp, race_name in st.session_state["races"]:
+        data = get_entries(race_id)
+        ranking = calc_ev(data["entries"], winrate_threshold, ev_threshold)
+
+        # ★フィルター後の馬だけ追加
+        for r in ranking:
+            r["レース"] = race_disp
+            r["レース名"] = race_name
+            all_rows.append(r)
+
+    if all_rows:
+        df = pd.DataFrame(all_rows)
+        df = df[[
+            "レース", "レース名",
+            "馬番", "馬名", "騎手",
+            "オッズ", "人気", "勝率(%)", "単勝期待値",
+            "逃げ馬指数"
+        ]]
+
+        styler = (
+            df.style
+            .apply(highlight_rows, axis=1)
+            .format({
+                "オッズ": "{:.1f}",
+                "人気": "{:.0f}",
+                "勝率(%)": "{:.1f}",
+                "単勝期待値": "{:.2f}",
+                "逃げ馬指数": "{:.1f}"
+            })
+        )
+
+        st.dataframe(styler, use_container_width=True)
+    else:
+        st.warning("条件に合う馬がいません")
+
+# 上位1〜5位（フィルター後の馬だけ）
+if "races" in st.session_state and st.button("全レース 単勝期待値 上位1〜5位"):
+    top_rows = []
+
+    for label, race_id, race_disp, race_name in st.session_state["races"]:
+        data = get_entries(race_id)
+        ranking = calc_ev(data["entries"], winrate_threshold, ev_threshold)
+
+        # ★フィルター後の馬の上位5頭
+        top5 = ranking[:5]
+
+        for r in top5:
+            r["レース"] = race_disp
+            r["レース名"] = race_name
+            top_rows.append(r)
+
+    if top_rows:
+        df = pd.DataFrame(top_rows)
+        df = df[[
+            "レース", "レース名",
+            "馬番", "馬名", "騎手",
+            "オッズ", "人気", "勝率(%)", "単勝期待値",
+            "逃げ馬指数"
+        ]]
+
+        styler = (
+            df.style
+            .apply(highlight_rows, axis=1)
+            .format({
+                "オッズ": "{:.1f}",
+                "人気": "{:.0f}",
+                "勝率(%)": "{:.1f}",
+                "単勝期待値": "{:.2f}",
+                "逃げ馬指数": "{:.1f}"
+            })
+        )
+
+        st.dataframe(styler, use_container_width=True)
+    else:
+        st.warning("条件に合う馬がいません")
