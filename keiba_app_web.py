@@ -12,9 +12,9 @@ def get_entries(race_id):
     url = f"https://frontrunner-race.com/api/race/{race_id}/entries"
     return requests.get(url).json()
 
-# ★クラス抽出（className → grade の順で判定）
+# ★重賞・OP・L だけ表示するクラス抽出
 def extract_class(class_name, grade):
-    # className が優先（GⅠ 表記が入っている）
+    # className が優先（GⅠ/GⅡ/GⅢ/OP/L）
     if class_name:
         if "GⅠ" in class_name:
             return "GⅠ"
@@ -26,16 +26,6 @@ def extract_class(class_name, grade):
             return "OP"
         if "L" in class_name:
             return "L"
-        if "3勝" in class_name:
-            return "3勝"
-        if "2勝" in class_name:
-            return "2勝"
-        if "1勝" in class_name:
-            return "1勝"
-        if "未勝利" in class_name:
-            return "未勝利"
-        if "新馬" in class_name:
-            return "新馬"
 
     # grade が G1/G2/G3 の場合
     if grade:
@@ -46,6 +36,7 @@ def extract_class(class_name, grade):
         if grade == "G3":
             return "GⅢ"
 
+    # ★条件戦（1勝・2勝・3勝・未勝利・新馬）は非表示
     return ""
 
 # 単勝期待値計算
@@ -141,46 +132,3 @@ if "races" in st.session_state:
                 race_id = rid
                 race_display = race_disp
                 race_name_display = race_name
-                break
-
-        data = get_entries(race_id)
-        ranking = calc_ev(data["entries"], winrate_threshold, ev_threshold)
-
-        if ranking:
-            df = pd.DataFrame(ranking)
-            df["レース"] = race_display
-            df["レース名"] = race_name_display
-
-            df = df[[
-                "レース", "レース名",
-                "馬番", "馬名", "騎手",
-                "オッズ", "人気", "勝率(%)", "単勝期待値",
-                "逃げ馬指数"
-            ]]
-
-            styler = (
-                df.style
-                .apply(highlight_rows, axis=1)
-                .format({
-                    "オッズ": "{:.1f}",
-                    "人気": "{:.0f}",
-                    "勝率(%)": "{:.1f}",
-                    "単勝期待値": "{:.2f}",
-                    "逃げ馬指数": "{:.1f}"
-                })
-            )
-
-            st.dataframe(styler, use_container_width=True)
-        else:
-            st.warning("条件に合う馬がいません")
-
-# 全レース分析
-if "races" in st.session_state and st.button("全レース分析（全件）"):
-    all_rows = []
-
-    for label, race_id, race_disp, race_name in st.session_state["races"]:
-        data = get_entries(race_id)
-        ranking = calc_ev(data["entries"], winrate_threshold, ev_threshold)
-
-        for r in ranking:
-            r["レース"] = race
