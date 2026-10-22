@@ -50,14 +50,11 @@ def highlight_rows(row):
     else:
         return [""] * len(row)
 
-# 開催場の並び順（JRA公式）
-VENUE_ORDER = ["京都", "中山", "阪神"]
-
-def sort_race_label(label):
-    # label = "京都 11R（レース名）"
+# 開催場 → レース番号で並び替える関数（動的開催場順）
+def sort_race_label(label, venue_order):
     venue = label.split()[0]
     race_num = int(re.findall(r"(\d+)R", label)[0])
-    venue_index = VENUE_ORDER.index(venue) if venue in VENUE_ORDER else 999
+    venue_index = venue_order.index(venue) if venue in venue_order else 999
     return (venue_index, race_num)
 
 # UI
@@ -77,6 +74,10 @@ if st.button("レース一覧取得"):
     else:
         st.success("レース一覧を取得しました")
 
+        # ★開催場順を動的に保存（東京・新潟・京都など全部対応）
+        venue_order = [v["name"] for v in race_list["venues"]]
+        st.session_state["venue_order"] = venue_order
+
         races = []
         for venue in race_list["venues"]:
             for idx, race in enumerate(venue["races"], start=1):
@@ -91,7 +92,7 @@ if st.button("レース一覧取得"):
                 races.append((label, race["id"], f"{venue['name']} {race_number}R", race_name))
 
         # ★開催場 → レース番号で並び替え
-        races.sort(key=lambda x: sort_race_label(x[0]))
+        races.sort(key=lambda x: sort_race_label(x[0], st.session_state["venue_order"]))
 
         st.session_state["races"] = races
 
@@ -155,10 +156,15 @@ if "races" in st.session_state and st.button("全レース分析（全件）"):
     if all_rows:
         df = pd.DataFrame(all_rows)
 
-        # ★開催場 → レース番号で並び替え
         df["venue"] = df["レース"].str.split().str[0]
         df["race_num"] = df["レース"].str.extract(r"(\d+)R").astype(int)
-        df["venue_order"] = df["venue"].apply(lambda v: VENUE_ORDER.index(v) if v in VENUE_ORDER else 999)
+
+        # ★動的開催場順で並び替え
+        df["venue_order"] = df["venue"].apply(
+            lambda v: st.session_state["venue_order"].index(v)
+            if v in st.session_state["venue_order"] else 999
+        )
+
         df = df.sort_values(["venue_order", "race_num"])
 
         df = df[[
@@ -172,11 +178,11 @@ if "races" in st.session_state and st.button("全レース分析（全件）"):
             df.style
             .apply(highlight_rows, axis=1)
             .format({
-                "オッズ": "{:.1f}",
-                "人気": "{:.0f}",
-                "勝率(%)": "{:.1f}",
-                "単勝期待値": "{:.2f}",
-                "逃げ馬指数": "{:.1f}"
+                    "オッズ": "{:.1f}",
+                    "人気": "{:.0f}",
+                    "勝率(%)": "{:.1f}",
+                    "単勝期待値": "{:.2f}",
+                    "逃げ馬指数": "{:.1f}"
             })
         )
 
@@ -201,10 +207,15 @@ if "races" in st.session_state and st.button("全レース 単勝期待値 上�
     if top_rows:
         df = pd.DataFrame(top_rows)
 
-        # ★開催場 → レース番号で並び替え
         df["venue"] = df["レース"].str.split().str[0]
         df["race_num"] = df["レース"].str.extract(r"(\d+)R").astype(int)
-        df["venue_order"] = df["venue"].apply(lambda v: VENUE_ORDER.index(v) if v in VENUE_ORDER else 999)
+
+        # ★動的開催場順で並び替え
+        df["venue_order"] = df["venue"].apply(
+            lambda v: st.session_state["venue_order"].index(v)
+            if v in st.session_state["venue_order"] else 999
+        )
+
         df = df.sort_values(["venue_order", "race_num"])
 
         df = df[[
@@ -218,11 +229,11 @@ if "races" in st.session_state and st.button("全レース 単勝期待値 上�
             df.style
             .apply(highlight_rows, axis=1)
             .format({
-                "オッズ": "{:.1f}",
-                "人気": "{:.0f}",
-                "勝率(%)": "{:.1f}",
-                "単勝期待値": "{:.2f}",
-                "逃げ馬指数": "{:.1f}"
+                    "オッズ": "{:.1f}",
+                    "人気": "{:.0f}",
+                    "勝率(%)": "{:.1f}",
+                    "単勝期待値": "{:.2f}",
+                    "逃げ馬指数": "{:.1f}"
             })
         )
 
