@@ -1,6 +1,7 @@
 import streamlit as st
 import requests
 import pandas as pd
+import re
 
 # API
 def get_race_list(date):
@@ -17,7 +18,7 @@ def calc_ev(entries, winrate_threshold, ev_threshold):
     for e in entries:
         if e["predictWinRate"] is None:
             continue
-        win = float(e["predictWinRate"])  # 例：0.111（＝11.1%）
+        win = float(e["predictWinRate"])
         if e["odds"] is None:
             continue
         odds = float(e["odds"])
@@ -25,7 +26,7 @@ def calc_ev(entries, winrate_threshold, ev_threshold):
 
         jockey = e.get("jockey", "不明")
 
-        # ★勝率フィルター修正（％で比較）
+        # 勝率フィルター（％で比較）
         if win * 100 >= winrate_threshold and ev >= ev_threshold:
             results.append({
                 "馬番": e["number"],
@@ -48,6 +49,16 @@ def highlight_rows(row):
         return ["background-color: #ffd0d0"] * len(row)
     else:
         return [""] * len(row)
+
+# 開催場の並び順（JRA公式）
+VENUE_ORDER = ["京都", "中山", "阪神"]
+
+def sort_race_label(label):
+    # label = "京都 11R（レース名）"
+    venue = label.split()[0]
+    race_num = int(re.findall(r"(\d+)R", label)[0])
+    venue_index = VENUE_ORDER.index(venue) if venue in VENUE_ORDER else 999
+    return (venue_index, race_num)
 
 # UI
 st.set_page_config(page_title="🐎競馬分析アプリ", layout="wide")
@@ -78,6 +89,9 @@ if st.button("レース一覧取得"):
                 label = f"{venue['name']} {race_number}R（{race_name}）"
 
                 races.append((label, race["id"], f"{venue['name']} {race_number}R", race_name))
+
+        # ★開催場 → レース番号で並び替え
+        races.sort(key=lambda x: sort_race_label(x[0]))
 
         st.session_state["races"] = races
 
@@ -125,7 +139,7 @@ if "races" in st.session_state:
         else:
             st.warning("条件に合う馬がいません")
 
-# 全レース分析（フィルター後の馬だけ）
+# 全レース分析（開催場 → レース番号で並び替え）
 if "races" in st.session_state and st.button("全レース分析（全件）"):
     all_rows = []
 
@@ -133,7 +147,6 @@ if "races" in st.session_state and st.button("全レース分析（全件）"):
         data = get_entries(race_id)
         ranking = calc_ev(data["entries"], winrate_threshold, ev_threshold)
 
-        # ★フィルター後の馬だけ追加
         for r in ranking:
             r["レース"] = race_disp
             r["レース名"] = race_name
@@ -141,6 +154,13 @@ if "races" in st.session_state and st.button("全レース分析（全件）"):
 
     if all_rows:
         df = pd.DataFrame(all_rows)
+
+        # ★開催場 → レース番号で並び替え
+        df["venue"] = df["レース"].str.split().str[0]
+        df["race_num"] = df["レース"].str.extract(r"(\d+)R").astype(int)
+        df["venue_order"] = df["venue"].apply(lambda v: VENUE_ORDER.index(v) if v in VENUE_ORDER else 999)
+        df = df.sort_values(["venue_order", "race_num"])
+
         df = df[[
             "レース", "レース名",
             "馬番", "馬名", "騎手",
@@ -164,15 +184,13 @@ if "races" in st.session_state and st.button("全レース分析（全件）"):
     else:
         st.warning("条件に合う馬がいません")
 
-# 上位1〜5位（フィルター後の馬だけ）
+# 上位1〜5位（開催場 → レース番号で並び替え）
 if "races" in st.session_state and st.button("全レース 単勝期待値 上位1〜5位"):
     top_rows = []
 
     for label, race_id, race_disp, race_name in st.session_state["races"]:
         data = get_entries(race_id)
         ranking = calc_ev(data["entries"], winrate_threshold, ev_threshold)
-
-        # ★フィルター後の馬の上位5頭
         top5 = ranking[:5]
 
         for r in top5:
@@ -182,6 +200,13 @@ if "races" in st.session_state and st.button("全レース 単勝期待値 上�
 
     if top_rows:
         df = pd.DataFrame(top_rows)
+
+        # ★開催場 → レース番号で並び替え
+        df["venue"] = df["レース"].str.split().str[0]
+        df["race_num"] = df["レース"].str.extract(r"(\d+)R").astype(int)
+        df["venue_order"] = df["venue"].apply(lambda v: VENUE_ORDER.index(v) if v in VENUE_ORDER else 999)
+        df = df.sort_values(["venue_order", "race_num"])
+
         df = df[[
             "レース", "レース名",
             "馬番", "馬名", "騎手",
