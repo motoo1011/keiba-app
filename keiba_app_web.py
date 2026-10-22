@@ -14,14 +14,16 @@ def get_entries(race_id):
 
 # ★重賞・OP・L だけ表示するクラス抽出
 def extract_class(class_name, grade):
-    # className が優先（GⅠ/GⅡ/GⅢ/OP/L）
     if class_name:
+        # 重賞
         if "GⅠ" in class_name:
             return "GⅠ"
         if "GⅡ" in class_name:
             return "GⅡ"
         if "GⅢ" in class_name:
             return "GⅢ"
+
+        # OP / L
         if "OP" in class_name:
             return "OP"
         if "L" in class_name:
@@ -36,7 +38,7 @@ def extract_class(class_name, grade):
         if grade == "G3":
             return "GⅢ"
 
-    # ★条件戦（1勝・2勝・3勝・未勝利・新馬）は非表示
+    # ★条件戦は非表示
     return ""
 
 # 単勝期待値計算
@@ -115,8 +117,15 @@ if st.button("レース一覧取得"):
                     race.get("grade")
                 )
 
-                label = f"{venue['name']} {race_number}R（{race_name}・{race_class}）"
-                races.append((label, race["id"], f"{venue['name']} {race_number}R", f"{race_name}（{race_class}）"))
+                # ★条件戦は（）を付けない
+                if race_class:
+                    label = f"{venue['name']} {race_number}R（{race_name}・{race_class}）"
+                    race_name_display = f"{race_name}（{race_class}）"
+                else:
+                    label = f"{venue['name']} {race_number}R（{race_name}）"
+                    race_name_display = race_name
+
+                races.append((label, race["id"], f"{venue['name']} {race_number}R", race_name_display))
 
         races.sort(key=lambda x: sort_race_label(x[0], st.session_state["venue_order"]))
         st.session_state["races"] = races
