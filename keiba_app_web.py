@@ -12,42 +12,43 @@ def get_entries(race_id):
     url = f"https://frontrunner-race.com/api/race/{race_id}/entries"
     return requests.get(url).json()
 
-# ★レースクラスをAPI表記そのままで抽出（GⅠ/GⅡ/GⅢ と G1/G2/G3 両対応）
-def extract_class(class_str):
-    if class_str is None:
-        return ""
+# ★クラス抽出（className → grade の順で判定）
+def extract_class(class_name, grade):
+    # className が優先（GⅠ 表記が入っている）
+    if class_name:
+        if "GⅠ" in class_name:
+            return "GⅠ"
+        if "GⅡ" in class_name:
+            return "GⅡ"
+        if "GⅢ" in class_name:
+            return "GⅢ"
+        if "OP" in class_name:
+            return "OP"
+        if "L" in class_name:
+            return "L"
+        if "3勝" in class_name:
+            return "3勝"
+        if "2勝" in class_name:
+            return "2勝"
+        if "1勝" in class_name:
+            return "1勝"
+        if "未勝利" in class_name:
+            return "未勝利"
+        if "新馬" in class_name:
+            return "新馬"
 
-    # 重賞（全パターン対応）
-    if "GⅠ" in class_str or "GI" in class_str or "G1" in class_str:
-        return "GⅠ"
-    if "GⅡ" in class_str or "GII" in class_str or "G2" in class_str:
-        return "GⅡ"
-    if "GⅢ" in class_str or "GIII" in class_str or "G3" in class_str:
-        return "GⅢ"
-
-    # オープン・リステッド
-    if "OP" in class_str:
-        return "OP"
-    if "L" in class_str:
-        return "L"
-
-    # 条件戦
-    if "3勝" in class_str:
-        return "3勝"
-    if "2勝" in class_str:
-        return "2勝"
-    if "1勝" in class_str:
-        return "1勝"
-
-    # 未勝利・新馬
-    if "未勝利" in class_str:
-        return "未勝利"
-    if "新馬" in class_str:
-        return "新馬"
+    # grade が G1/G2/G3 の場合
+    if grade:
+        if grade == "G1":
+            return "GⅠ"
+        if grade == "G2":
+            return "GⅡ"
+        if grade == "G3":
+            return "GⅢ"
 
     return ""
 
-# 単勝期待値計算（勝率フィルター修正済み）
+# 単勝期待値計算
 def calc_ev(entries, winrate_threshold, ev_threshold):
     results = []
     for e in entries:
@@ -61,7 +62,6 @@ def calc_ev(entries, winrate_threshold, ev_threshold):
 
         jockey = e.get("jockey", "不明")
 
-        # 勝率フィルター（％で比較）
         if win * 100 >= winrate_threshold and ev >= ev_threshold:
             results.append({
                 "馬番": e["number"],
@@ -76,7 +76,7 @@ def calc_ev(entries, winrate_threshold, ev_threshold):
 
     return sorted(results, key=lambda x: x["単勝期待値"], reverse=True)
 
-# EV色付け（背景）
+# 色付け
 def highlight_rows(row):
     if row["単勝期待値"] >= 2.0:
         return ["background-color: #d0ffd0"] * len(row)
@@ -85,7 +85,7 @@ def highlight_rows(row):
     else:
         return [""] * len(row)
 
-# 開催場 → レース番号で並び替える関数（動的開催場順）
+# 開催場 → レース番号で並び替え
 def sort_race_label(label, venue_order):
     venue = label.split()[0]
     race_num = int(re.findall(r"(\d+)R", label)[0])
@@ -109,28 +109,25 @@ if st.button("レース一覧取得"):
     else:
         st.success("レース一覧を取得しました")
 
-        # ★開催場順を動的に保存
         venue_order = [v["name"] for v in race_list["venues"]]
         st.session_state["venue_order"] = venue_order
 
         races = []
         for venue in race_list["venues"]:
             for idx, race in enumerate(venue["races"], start=1):
-                race_number = race.get("number", idx)
+                race_number = race.get("raceNumber", idx)
+                race_name = race.get("name") or race.get("nameShort", "レース名不明")
 
-                race_name = race.get("name") or race.get("raceNameShort", "レース名不明")
+                # ★className と grade を使ってクラス抽出
+                race_class = extract_class(
+                    race.get("className"),
+                    race.get("grade")
+                )
 
-                # ★レースクラス抽出
-                race_class = extract_class(race.get("class"))
-
-                # ★レース名にクラスを追加
                 label = f"{venue['name']} {race_number}R（{race_name}・{race_class}）"
-
                 races.append((label, race["id"], f"{venue['name']} {race_number}R", f"{race_name}（{race_class}）"))
 
-        # ★開催場 → レース番号で並び替え
         races.sort(key=lambda x: sort_race_label(x[0], st.session_state["venue_order"]))
-
         st.session_state["races"] = races
 
 # レース選択
@@ -177,7 +174,7 @@ if "races" in st.session_state:
         else:
             st.warning("条件に合う馬がいません")
 
-# 全レース分析（開催場 → レース番号で並び替え）
+# 全レース分析
 if "races" in st.session_state and st.button("全レース分析（全件）"):
     all_rows = []
 
@@ -186,92 +183,4 @@ if "races" in st.session_state and st.button("全レース分析（全件）"):
         ranking = calc_ev(data["entries"], winrate_threshold, ev_threshold)
 
         for r in ranking:
-            r["レース"] = race_disp
-            r["レース名"] = race_name
-            all_rows.append(r)
-
-    if all_rows:
-        df = pd.DataFrame(all_rows)
-
-        df["venue"] = df["レース"].str.split().str[0]
-        df["race_num"] = df["レース"].str.extract(r"(\d+)R").astype(int)
-
-        df["venue_order"] = df["venue"].apply(
-            lambda v: st.session_state["venue_order"].index(v)
-            if v in st.session_state["venue_order"] else 999
-        )
-
-        df = df.sort_values(["venue_order", "race_num"])
-
-        df = df[[
-            "レース", "レース名",
-            "馬番", "馬名", "騎手",
-            "オッズ", "人気", "勝率(%)", "単勝期待値",
-            "逃げ馬指数"
-        ]]
-
-        styler = (
-            df.style
-            .apply(highlight_rows, axis=1)
-            .format({
-                    "オッズ": "{:.1f}",
-                    "人気": "{:.0f}",
-                    "勝率(%)": "{:.1f}",
-                    "単勝期待値": "{:.2f}",
-                    "逃げ馬指数": "{:.1f}"
-            })
-        )
-
-        st.dataframe(styler, use_container_width=True)
-    else:
-        st.warning("条件に合う馬がいません")
-
-# 上位1〜5位（開催場 → レース番号で並び替え）
-if "races" in st.session_state and st.button("全レース 単勝期待値 上位1〜5位"):
-    top_rows = []
-
-    for label, race_id, race_disp, race_name in st.session_state["races"]:
-        data = get_entries(race_id)
-        ranking = calc_ev(data["entries"], winrate_threshold, ev_threshold)
-        top5 = ranking[:5]
-
-        for r in top5:
-            r["レース"] = race_disp
-            r["レース名"] = race_name
-            top_rows.append(r)
-
-    if top_rows:
-        df = pd.DataFrame(top_rows)
-
-        df["venue"] = df["レース"].str.split().str[0]
-        df["race_num"] = df["レース"].str.extract(r"(\d+)R").astype(int)
-
-        df["venue_order"] = df["venue"].apply(
-            lambda v: st.session_state["venue_order"].index(v)
-            if v in st.session_state["venue_order"] else 999
-        )
-
-        df = df.sort_values(["venue_order", "race_num"])
-
-        df = df[[
-            "レース", "レース名",
-            "馬番", "馬名", "騎手",
-            "オッズ", "人気", "勝率(%)", "単勝期待値",
-            "逃げ馬指数"
-        ]]
-
-        styler = (
-            df.style
-            .apply(highlight_rows, axis=1)
-            .format({
-                    "オッズ": "{:.1f}",
-                    "人気": "{:.0f}",
-                    "勝率(%)": "{:.1f}",
-                    "単勝期待値": "{:.2f}",
-                    "逃げ馬指数": "{:.1f}"
-            })
-        )
-
-        st.dataframe(styler, use_container_width=True)
-    else:
-        st.warning("条件に合う馬がいません")
+            r["レース"] = race
