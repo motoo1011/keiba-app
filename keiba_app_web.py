@@ -3,6 +3,7 @@ import requests
 import pandas as pd
 import re
 import datetime
+import jpholiday
 
 # =========================
 # 2026年中央競馬 全開催日
@@ -75,15 +76,15 @@ def extract_class(class_name, grade, is_jump):
 def grade_color(row):
     val = row["レース名"]
     if "GⅠ" in val or "J・GⅠ" in val:
-        return ["color: #007bff; font-weight: bold;" if col == "レース名" else "" for col in row.index]
+        return ["color: #007bff; font-weight: bold;" if col=="レース名" else "" for col in row.index]
     if "GⅡ" in val or "J・GⅡ" in val:
-        return ["color: #dc3545; font-weight: bold;" if col == "レース名" else "" for col in row.index]
+        return ["color: #dc3545; font-weight: bold;" if col=="レース名" else "" for col in row.index]
     if "GⅢ" in val or "J・GⅢ" in val:
-        return ["color: #28a745; font-weight: bold;" if col == "レース名" else "" for col in row.index]
+        return ["color: #28a745; font-weight: bold;" if col=="レース名" else "" for col in row.index]
     if "L" in val:
-        return ["color: #6f42c1; font-weight: bold;" if col == "レース名" else "" for col in row.index]
+        return ["color: #6f42c1; font-weight: bold;" if col=="レース名" else "" for col in row.index]
     if "OP" in val:
-        return ["color: #fd7e14; font-weight: bold;" if col == "レース名" else "" for col in row.index]
+        return ["color: #fd7e14; font-weight: bold;" if col=="レース名" else "" for col in row.index]
     return [""] * len(row)
 
 # =========================
@@ -93,10 +94,10 @@ def grade_color(row):
 def calc_ev(entries, winrate_threshold, ev_threshold):
     results = []
     for e in entries:
-        if e["predictWinRate"] is None:
+        if e["predictWinRate"] is None: 
             continue
         win = float(e["predictWinRate"])
-        if e["odds"] is None:
+        if e["odds"] is None: 
             continue
         odds = float(e["odds"])
         ev = win * odds
@@ -143,6 +144,7 @@ def sort_race_label(label, venue_order):
 st.set_page_config(page_title="🐎競馬分析アプリ", layout="wide")
 st.title("🐎競馬分析アプリ")
 
+# 開催日プルダウン
 jra_days = [""] + get_jra_days_sorted()
 date = st.selectbox("開催日を選択してください", jra_days)
 
@@ -183,308 +185,256 @@ if st.button("レース一覧取得"):
 
         races.sort(key=lambda x: sort_race_label(x[0], st.session_state["venue_order"]))
         st.session_state["races"] = races
-        
-# =========================
-# レース選択
-# =========================
-
-selected_race = st.selectbox("レースを選択", [""] + [r[0] for r in st.session_state.get("races", [])])
 
 # =========================
-# 単一レース分析
+# レース一覧取得後の処理
 # =========================
 
-if st.button("このレースだけ分析"):
-    if not selected_race:
-        st.warning("レースを選択してください")
-    else:
+if "races" in st.session_state:
+    race_labels = [r[0] for r in st.session_state["races"]]
+    selected_race = st.selectbox("レースを選択", race_labels)
+
+    # ★ 単一レース分析
+    if st.button("このレースだけ分析"):
         for label, rid, race_disp, race_name_display in st.session_state["races"]:
             if label == selected_race:
                 race_id = rid
+                race_display = race_disp
+                race_name_display = race_name_display
                 break
 
         data = get_entries(race_id)
-        entries = data["entries"]
+        ranking = calc_ev(data["entries"], winrate_threshold, ev_threshold)
 
-        results = calc_ev(entries, winrate_threshold, ev_threshold)
+        if ranking:
+            df = pd.DataFrame(ranking)
+            df["レース"] = race_display
+            df["レース名"] = race_name_display
 
-        st.subheader(f"📌 {selected_race} 単勝期待値分析")
-        if len(results) == 0:
-            st.info("条件を満たす馬がいません")
-        else:
-            df = pd.DataFrame(results)
-            st.dataframe(df.style.apply(highlight_rows, axis=1))
+            df = df[[
+                "レース", "レース名",
+                "馬番", "馬名", "騎手",
+                "オッズ", "人気", "勝率(%)", "単勝期待値",
+                "逃げ馬指数"
+            ]]
 
-# =========================
-# WIN5 対象レース分析
-# =========================
+            df = df.sort_values(by=["単勝期待値"], ascending=[False])
 
-if st.button("WINS対象レース分析"):
-    st.subheader("WIN5 対象レース分析")
-
-    # WIN5対象は通常 10R〜11R（開催場によって変動）
-    win5_labels = [
-        r for r in st.session_state["races"]
-        if ("10R" in r[0]) or ("11R" in r[0])
-    ]
-
-    for label, rid, race_disp, race_name_display in win5_labels:
-        data = get_entries(rid)
-        entries = data["entries"]
-        results = calc_ev(entries, winrate_threshold, ev_threshold)
-
-        st.write(f"### {label}")
-        if len(results) == 0:
-            st.info("条件を満たす馬がいません")
-        else:
-            df = pd.DataFrame(results)
-            st.dataframe(df.style.apply(highlight_rows, axis=1))
-
-# =========================
-# 全レース分析（全件）
-# =========================
-
-if st.button("全レース分析（全件）"):
-    st.subheader("📌 全レース 単勝期待値分析")
-
-    for label, rid, race_disp, race_name_display in st.session_state["races"]:
-        data = get_entries(rid)
-        entries = data["entries"]
-        results = calc_ev(entries, winrate_threshold, ev_threshold)
-
-        st.write(f"### {label}")
-        if len(results) == 0:
-            st.info("条件を満たす馬がいません")
-        else:
-            df = pd.DataFrame(results)
-            st.dataframe(df.style.apply(highlight_rows, axis=1))
-
-# =========================
-# 全レース 単勝期待値上位1～5位
-# =========================
-
-if st.button("全レース 単勝期待値上位1～5位"):
-    st.subheader("📌 全レース 単勝期待値 上位1～5位")
-
-    rows = []
-
-    for label, rid, race_disp, race_name_display in st.session_state["races"]:
-        data = get_entries(rid)
-        entries = data["entries"]
-        results = calc_ev(entries, 0, 0)  # 全馬対象
-
-        if len(results) > 0:
-            top5 = results[:5]
-            for r in top5:
-                rows.append({
-                    "レース": label,
-                    "馬番": r["馬番"],
-                    "馬名": r["馬名"],
-                    "騎手": r["騎手"],
-                    "オッズ": r["オッズ"],
-                    "人気": r["人気"],
-                    "勝率(%)": r["勝率(%)"],
-                    "単勝期待値": r["単勝期待値"]
+            styler = (
+                df.style
+                .apply(highlight_rows, axis=1)
+                .apply(grade_color, axis=1)
+                .format({
+                    "オッズ": "{:.1f}",
+                    "人気": "{:.0f}",
+                    "勝率(%)": "{:.1f}",
+                    "単勝期待値": "{:.2f}",
+                    "逃げ馬指数": "{:.1f}"
                 })
+            )
+            st.dataframe(styler, use_container_width=True)
+        else:
+            st.warning("条件に合う馬がいません")
 
-    if len(rows) == 0:
-        st.info("単勝期待値データがありません")
+# =========================
+# ★★★ WIN5対象レース分析（2場・3場開催対応）
+# =========================
+
+if "races" in st.session_state and st.button("WIN5対象レース分析"):
+    win5_rows = []
+
+    venue_order = st.session_state["venue_order"]
+    venues = venue_order
+
+    if len(venues) < 2:
+        st.warning("WIN5対象レースは2場以上開催時のみ対応しています")
     else:
-        df_top5 = pd.DataFrame(rows)
-        st.dataframe(df_top5.style.apply(highlight_rows, axis=1))
+        venue_A = venues[0]
+        venue_B = venues[1]
+        venue_C = venues[2] if len(venues) >= 3 else None
+
+        race_map = {}
+        for label, race_id, race_disp, race_name_display in st.session_state["races"]:
+            venue = race_disp.split()[0]
+            race_num = int(re.findall(r"(\d+)R", race_disp)[0])
+            race_map.setdefault((venue, race_num), []).append(
+                (venue, race_id, race_disp, race_name_display)
+            )
+
+        if venue_C is not None:
+            # 3場開催
+            win5_targets = [
+                (venue_A, 10),
+                (venue_B, 10),
+                (venue_C, 11),
+                (venue_A, 11),
+                (venue_B, 11),
+            ]
+        else:
+            # 2場開催
+            win5_targets = [
+                (venue_A, 9),
+                (venue_B, 10),
+                (venue_A, 10),
+                (venue_B, 11),
+                (venue_A, 11),
+            ]
+
+        selected_win5 = []
+        for venue, num in win5_targets:
+            key = (venue, num)
+            if key in race_map:
+                selected_win5.extend(race_map[key])
+
+        for venue, race_id, race_disp, race_name_display in selected_win5:
+            data = get_entries(race_id)
+            ranking = calc_ev(data["entries"], winrate_threshold, ev_threshold)
+
+            for r in ranking:
+                r["レース"] = race_disp
+                r["レース名"] = race_name_display
+                win5_rows.append(r)
+
+        if win5_rows:
+            df = pd.DataFrame(win5_rows)
+
+            df["venue"] = df["レース"].str.split().str[0]
+            df["race_num"] = df["レース"].str.extract(r"(\d+)R").astype(int)
+
+            df["venue_order"] = df["venue"].apply(
+                lambda v: venue_order.index(v)
+                if v in venue_order else 999
+            )
+
+            df = df.sort_values(by=["venue_order", "race_num"], ascending=[True, True])
+            df = df.sort_values(by=["venue_order", "race_num", "単勝期待値"], ascending=[True, True, False])
+
+            df = df[[
+                "レース", "レース名",
+                "馬番", "馬名", "騎手",
+                "オッズ", "人気", "勝率(%)", "単勝期待値",
+                "逃げ馬指数"
+            ]]
+
+            styler = (
+                df.style
+                .apply(highlight_rows, axis=1)
+                .apply(grade_color, axis=1)
+                .format({
+                    "オッズ": "{:.1f}",
+                    "人気": "{:.0f}",
+                    "勝率(%)": "{:.1f}",
+                    "単勝期待値": "{:.2f}",
+                    "逃げ馬指数": "{:.1f}"
+                })
+            )
+            st.dataframe(styler, use_container_width=True)
+        else:
+            st.warning("WIN5対象レースが見つかりません")
 
 # =========================
-# 馬場傾向（トラックバイアス）完全版
+# ★★★ 全レース分析（各レースごとに単勝期待値順）
 # =========================
 
-def normalize_surface(s):
-    """APIの表記揺れを統一する"""
-    if s is None:
-        return "不明"
-    s = str(s).lower()
-    if s in ["芝", "turf", "grass"]:
-        return "芝"
-    if s in ["ダート", "dirt", "sand"]:
-        return "ダート"
-    return "不明"
+if "races" in st.session_state and st.button("全レース分析（全件）"):
+    all_rows = []
 
-
-if "races" in st.session_state and st.button("馬場傾向（トラックバイアス）"):
-    bias_rows = []
-
-    # 全レースの結果を取得
     for label, race_id, race_disp, race_name_display in st.session_state["races"]:
         data = get_entries(race_id)
-        entries = data["entries"]
+        ranking = calc_ev(data["entries"], winrate_threshold, ev_threshold)
 
-        # 小頭数レースは除外（9頭以下）
-        if len(entries) <= 9:
-            continue
+        for r in ranking:
+            r["レース"] = race_disp
+            r["レース名"] = race_name_display
+            all_rows.append(r)
 
-        for e in entries:
-            finish = e.get("finishPosition")
-            if finish is None:
-                continue  # 結果が入っていないレースは除外
+    if all_rows:
+        df = pd.DataFrame(all_rows)
 
-            bias_rows.append({
-                "レース": race_disp,
-                "芝ダート": normalize_surface(e.get("surface")),
-                "枠": e.get("frameNumber", None),
-                "4角位置": e.get("cornerPositions", {}).get("4c", None),
-                "上がり": e.get("last3fTime", None),
-                "着順": finish
+        df["venue"] = df["レース"].str.split().str[0]
+        df["race_num"] = df["レース"].str.extract(r"(\d+)R").astype(int)
+
+        df["venue_order"] = df["venue"].apply(
+            lambda v: st.session_state["venue_order"].index(v)
+            if v in st.session_state["venue_order"] else 999
+        )
+
+        df = df.sort_values(by=["venue_order", "race_num"], ascending=[True, True])
+        df = df.sort_values(by=["venue_order", "race_num", "単勝期待値"], ascending=[True, True, False])
+
+        df = df[[
+            "レース", "レース名",
+            "馬番", "馬名", "騎手",
+            "オッズ", "人気", "勝率(%)", "単勝期待値",
+            "逃げ馬指数"
+        ]]
+
+        styler = (
+            df.style
+            .apply(highlight_rows, axis=1)
+            .apply(grade_color, axis=1)
+            .format({
+                "オッズ": "{:.1f}",
+                "人気": "{:.0f}",
+                "勝率(%)": "{:.1f}",
+                "単勝期待値": "{:.2f}",
+                "逃げ馬指数": "{:.1f}"
             })
-
-    df = pd.DataFrame(bias_rows)
-
-    if df.empty:
-        st.warning("馬場傾向を判定できるレースがありません（小頭数除外 or 結果未反映）")
+        )
+        st.dataframe(styler, use_container_width=True)
     else:
-        # 脚質分類
-        def classify_kyakushitsu(pos):
-            if pos is None:
-                return None
-            pos = int(pos)
-            if pos <= 3:
-                return "前"
-            elif pos <= 6:
-                return "中"
-            else:
-                return "後"
+        st.warning("条件に合う馬がいません")
 
-        df["脚質"] = df["4角位置"].apply(classify_kyakushitsu)
+# =========================
+# ★★★ 全レース 上位1〜5位（各レースごとに単勝期待値順）
+# =========================
 
-        # 枠分類
-        def classify_waku(w):
-            if w is None:
-                return None
-            w = int(w)
-            if w <= 3:
-                return "内"
-            elif w <= 6:
-                return "中"
-            else:
-                return "外"
+if "races" in st.session_state and st.button("全レース 単勝期待値 上位1〜5位"):
+    top_rows = []
 
-        df["枠傾向"] = df["枠"].apply(classify_waku)
+    for label, race_id, race_disp, race_name_display in st.session_state["races"]:
+        data = get_entries(race_id)
+        ranking = calc_ev(data["entries"], winrate_threshold, ev_threshold)
+        top5 = ranking[:5]
 
-        # 芝・ダート別集計
-        result = {}
-        reason = []  # 判定できない理由を記録
+        for r in top5:
+            r["レース"] = race_disp
+            r["レース名"] = race_name_display
+            top_rows.append(r)
 
-        for sd in ["芝", "ダート"]:
-            sdf = df[df["芝ダート"] == sd]
+    if top_rows:
+        df = pd.DataFrame(top_rows)
 
-            # 10頭以上のレースが3つ未満なら判定不可
-            if len(sdf) < 30:
-                reason.append(f"{sd}：10頭以上のレースが3つ未満")
-                continue
+        df["venue"] = df["レース"].str.split().str[0]
+        df["race_num"] = df["レース"].str.extract(r"(\d+)R").astype(int)
 
-            # 複勝馬（1〜3着）
-            fuku = sdf[sdf["着順"] <= 3]
+        df["venue_order"] = df["venue"].apply(
+            lambda v: st.session_state["venue_order"].index(v)
+            if v in st.session_state["venue_order"] else 999
+        )
 
-            # 枠複勝率
-            waku_rate = fuku["枠傾向"].value_counts(normalize=True)
+        df = df.sort_values(by=["venue_order", "race_num"], ascending=[True, True])
+        df = df.sort_values(by=["venue_order", "race_num", "単勝期待値"], ascending=[True, True, False])
 
-            # 脚質複勝率
-            kyaku_rate = fuku["脚質"].value_counts(normalize=True)
+        df = df[[
+            "レース", "レース名",
+            "馬番", "馬名", "騎手",
+            "オッズ", "人気", "勝率(%)", "単勝期待値",
+            "逃げ馬指数"
+        ]]
 
-            # 4角平均位置（全馬）
-            avg_4c = sdf["4角位置"].astype(float).mean()
-
-            # 勝ち馬の上がり平均
-            win_avg_agari = sdf[sdf["着順"] == 1]["上がり"].astype(float).mean()
-
-            # -------------------------
-            # 判定ロジック
-            # -------------------------
-
-            # 枠判定
-            diff_waku = waku_rate.get("内", 0) - waku_rate.get("外", 0)
-            if diff_waku > 0.15:
-                waku_judge = "内"
-            elif diff_waku < -0.15:
-                waku_judge = "外"
-            else:
-                waku_judge = "フラット"
-
-            # 前後（脚質）
-            if avg_4c <= 3.5:
-                maeushiro = "超前"
-            elif avg_4c <= 5.0:
-                maeushiro = "前"
-            elif avg_4c <= 6.5:
-                maeushiro = "展開次第"
-            elif avg_4c <= 8.0:
-                maeushiro = "差し"
-            else:
-                maeushiro = "超差し"
-
-            # 上がり判定
-            if win_avg_agari <= 34.0:
-                agari_judge = "速い"
-            elif win_avg_agari <= 34.8:
-                agari_judge = "やや速い"
-            elif win_avg_agari <= 35.5:
-                agari_judge = "標準"
-            elif win_avg_agari <= 36.2:
-                agari_judge = "やや遅い"
-            else:
-                agari_judge = "遅い"
-
-            # 直線の伸び（複勝馬の枠で判定）
-            if waku_rate.get("内", 0) > 0.45:
-                nobi = "内"
-            elif waku_rate.get("外", 0) > 0.45:
-                nobi = "外"
-            else:
-                nobi = "フラット"
-
-            # 馬場（軽い/重い） → 上がりで判定
-            if win_avg_agari <= 34.0:
-                baba = "軽い"
-            elif win_avg_agari <= 34.8:
-                baba = "やや軽い"
-            elif win_avg_agari <= 35.5:
-                baba = "標準"
-            elif win_avg_agari <= 36.2:
-                baba = "やや重い"
-            else:
-                baba = "重い"
-
-            result[sd] = {
-                "馬場": baba,
-                "上がり": agari_judge,
-                "枠": waku_judge,
-                "直線": nobi,
-                "前後": maeushiro
-            }
-
-        # -------------------------
-        # 表示
-        # -------------------------
-
-        st.subheader("📊 馬場傾向（トラックバイアス）")
-
-        if len(result) == 0:
-            st.error("馬場傾向を判定できませんでした")
-            for r in reason:
-                st.write("・" + r)
-        else:
-            for sd, info in result.items():
-                st.write(f"### {sd}")
-
-                table = pd.DataFrame({
-                    "項目": ["馬場", "上がり", "枠", "直線の伸び", "前後"],
-                    "判定": [
-                        info["馬場"],
-                        info["上がり"],
-                        info["枠"],
-                        info["直線"],
-                        info["前後"]
-                    ]
-                })
-
-                st.table(table)
-
-            st.success("馬場傾向の判定が完了しました")
+        styler = (
+            df.style
+            .apply(highlight_rows, axis=1)
+            .apply(grade_color, axis=1)
+            .format({
+                "オッズ": "{:.1f}",
+                "人気": "{:.0f}",
+                "勝率(%)": "{:.1f}",
+                "単勝期待値": "{:.2f}",
+                "逃げ馬指数": "{:.1f}"
+            })
+        )
+        st.dataframe(styler, use_container_width=True)
+    else:
+        st.warning("条件に合う馬がいません")
