@@ -28,15 +28,21 @@ JRA_2026 = [
 # =========================
 
 def get_jra_days_sorted():
+    # サーバー側の今日の日付（スマホの時刻ズレを無視できる）
     today = datetime.date.today()
+
+    # 今日までの開催日だけを残す（翌日以降は除外）
     valid_dates = [
         d for d in JRA_2026
         if datetime.datetime.strptime(d, "%Y-%m-%d").date() <= today
     ]
+
+    # 今日に近い順に並べる
     sorted_dates = sorted(
         valid_dates,
         key=lambda x: abs((datetime.datetime.strptime(x, "%Y-%m-%d").date() - today).days)
     )
+
     return sorted_dates
 
 # =========================
