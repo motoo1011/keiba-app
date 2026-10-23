@@ -2,6 +2,33 @@ import streamlit as st
 import requests
 import pandas as pd
 import re
+import datetime
+import jpholiday
+
+# JRA開催日判定（土日＋祝日）
+def is_jra_day(date_str):
+    try:
+        d = datetime.datetime.strptime(date_str, "%Y-%m-%d").date()
+    except:
+        return False
+
+    # 土曜(5)・日曜(6)・祝日
+    return d.weekday() in [5, 6] or jpholiday.is_holiday(d)
+
+# 直近のJRA開催日を取得
+def get_recent_jra_days(n=10):
+    today = datetime.date.today()
+    days = []
+
+    for i in range(40):  # 過去40日分チェック
+        d = today - datetime.timedelta(days=i)
+        ds = d.strftime("%Y-%m-%d")
+        if is_jra_day(ds):
+            days.append(ds)
+            if len(days) >= n:
+                break
+
+    return days[::-1]  # 昇順に並べる
 
 # API
 def get_race_list(date):
@@ -14,7 +41,6 @@ def get_entries(race_id):
 
 # ★重賞・障害重賞・OP・L を正しく判定するクラス抽出
 def extract_class(class_name, grade, is_jump):
-    # 障害重賞（J・GⅠ / J・GⅡ / J・GⅢ）
     if is_jump:
         if grade == "G1":
             return "J・GⅠ"
@@ -23,7 +49,6 @@ def extract_class(class_name, grade, is_jump):
         if grade == "G3":
             return "J・GⅢ"
 
-    # 平地重賞（GⅠ / GⅡ / GⅢ）
     if grade == "G1":
         return "GⅠ"
     if grade == "G2":
@@ -31,15 +56,12 @@ def extract_class(class_name, grade, is_jump):
     if grade == "G3":
         return "GⅢ"
 
-    # L（リステッド）
     if grade == "L":
         return "L"
 
-    # OP（オープン）＝ grade が空 & className に「オープン」
     if class_name and ("オープン" in class_name) and (not grade):
         return "OP"
 
-    # 条件戦は非表示
     return ""
 
 # ★グレード部分に色を付ける（Streamlit対応）
@@ -111,7 +133,19 @@ def sort_race_label(label, venue_order):
 st.set_page_config(page_title="🐎競馬分析アプリ", layout="wide")
 st.title("🐎競馬分析アプリ")
 
-date = st.text_input("開催日 (YYYY-MM-DD)", "2026-10-18")
+# ★初期値は空欄
+date = st.text_input("開催日 (YYYY-MM-DD)", "")
+
+# ★JRA開催日候補表示
+st.subheader("最近のJRA開催日（自動判定）")
+for d in get_recent_jra_days():
+    if st.button(d):
+        st.session_state["selected_date"] = d
+
+# ボタンで選んだ日付を反映
+if "selected_date" in st.session_state:
+    date = st.session_state["selected_date"]
+
 winrate_threshold = st.selectbox("勝率閾値（％以上）", [0, 5, 10, 15, 20, 25, 30])
 ev_threshold = float(st.selectbox("単勝期待値閾値（以上）", ["0"] + [f"{x/10:.1f}" for x in range(10, 31)]))
 
@@ -180,6 +214,12 @@ if "races" in st.session_state:
                 "逃げ馬指数"
             ]]
 
+            # ★デフォルトソート
+            df = df.sort_values(
+                by=["馬番", "人気", "オッズ", "勝率(%)", "単勝期待値", "逃げ馬指数"],
+                ascending=[True, True, True, False, False, False]
+            )
+
             styler = (
                 df.style
                 .apply(highlight_rows, axis=1)
@@ -229,6 +269,12 @@ if "races" in st.session_state and st.button("全レース分析（全件）"):
             "オッズ", "人気", "勝率(%)", "単勝期待値",
             "逃げ馬指数"
         ]]
+
+        # ★デフォルトソート
+        df = df.sort_values(
+            by=["馬番", "人気", "オッズ", "勝率(%)", "単勝期待値", "逃げ馬指数"],
+            ascending=[True, True, True, False, False, False]
+        )
 
         styler = (
             df.style
@@ -280,6 +326,12 @@ if "races" in st.session_state and st.button("全レース 単勝期待値 上�
             "オッズ", "人気", "勝率(%)", "単勝期待値",
             "逃げ馬指数"
         ]]
+
+        # ★デフォルトソート
+        df = df.sort_values(
+            by=["馬番", "人気", "オッズ", "勝率(%)", "単勝期待値", "逃げ馬指数"],
+            ascending=[True, True, True, False, False, False]
+        )
 
         styler = (
             df.style
