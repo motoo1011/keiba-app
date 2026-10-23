@@ -3,7 +3,6 @@ import requests
 import pandas as pd
 import re
 import datetime
-import jpholiday
 
 # =========================
 # 2026年中央競馬 全開催日
