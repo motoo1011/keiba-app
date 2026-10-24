@@ -32,10 +32,11 @@ def get_jra_days_sorted():
     today = datetime.date.today()
 
     # 今日までの開催日だけを残す（翌日以降は除外）
-    valid_dates = [
-        d for d in JRA_2026
-        if datetime.datetime.strptime(d, "%Y-%m-%d").date() <= today
-    ]
+    valid_dates = []
+    for d in JRA_2026:
+        race_date = datetime.datetime.strptime(d, "%Y-%m-%d").date()
+        if race_date <= today:
+            valid_dates.append(d)
 
     # 今日に近い順に並べる
     sorted_dates = sorted(
@@ -44,6 +45,7 @@ def get_jra_days_sorted():
     )
 
     return sorted_dates
+
 
 # =========================
 # API
