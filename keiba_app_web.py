@@ -445,3 +445,13 @@ if "races" in st.session_state and st.button("全レース 単勝期待値 上�
         st.dataframe(styler, use_container_width=True)
     else:
         st.warning("条件に合う馬がいません")
+
+# =========================
+# 馬場傾向（外部サイトへジャンプ）
+# =========================
+
+st.link_button(
+    "馬場傾向（トラックバイアス）を確認",
+    "https://www.bloodline-trackbias.work/"
+)
+
