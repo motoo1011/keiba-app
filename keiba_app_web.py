@@ -155,8 +155,8 @@ st.title("🐎競馬分析アプリ")
 jra_days = [""] + get_jra_days_sorted()
 date = st.selectbox("開催日を選択してください", jra_days)
 
-winrate_threshold = st.selectbox("勝率閾値（％以上）", [0, 5, 10, 15, 20, 25, 30])
-ev_threshold = float(st.selectbox("単勝期待値閾値（以上）", ["0"] + [f"{x/10:.1f}" for x in range(10, 31)]))
+winrate_threshold = st.selectbox("勝率閾値（％以上）", [0, 1, 2, 3, 4, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50])
+ev_threshold = float(st.selectbox("単勝期待値閾値（以上）", ["0"] + [f"{x/10:.1f}" for x in range(10, 21)]))
 
 # =========================
 # レース一覧取得
@@ -244,102 +244,6 @@ if "races" in st.session_state:
             st.warning("条件に合う馬がいません")
 
 # =========================
-# ★★★ WIN5対象レース分析（2場・3場開催対応）
-# =========================
-
-if "races" in st.session_state and st.button("WIN5対象レース分析"):
-    win5_rows = []
-
-    venue_order = st.session_state["venue_order"]
-    venues = venue_order
-
-    if len(venues) < 2:
-        st.warning("WIN5対象レースは2場以上開催時のみ対応しています")
-    else:
-        venue_A = venues[0]
-        venue_B = venues[1]
-        venue_C = venues[2] if len(venues) >= 3 else None
-
-        race_map = {}
-        for label, race_id, race_disp, race_name_display in st.session_state["races"]:
-            venue = race_disp.split()[0]
-            race_num = int(re.findall(r"(\d+)R", race_disp)[0])
-            race_map.setdefault((venue, race_num), []).append(
-                (venue, race_id, race_disp, race_name_display)
-            )
-
-        if venue_C is not None:
-            # 3場開催
-            win5_targets = [
-                (venue_A, 10),
-                (venue_B, 10),
-                (venue_C, 11),
-                (venue_A, 11),
-                (venue_B, 11),
-            ]
-        else:
-            # 2場開催
-            win5_targets = [
-                (venue_A, 9),
-                (venue_B, 10),
-                (venue_A, 10),
-                (venue_B, 11),
-                (venue_A, 11),
-            ]
-
-        selected_win5 = []
-        for venue, num in win5_targets:
-            key = (venue, num)
-            if key in race_map:
-                selected_win5.extend(race_map[key])
-
-        for venue, race_id, race_disp, race_name_display in selected_win5:
-            data = get_entries(race_id)
-            ranking = calc_ev(data["entries"], winrate_threshold, ev_threshold)
-
-            for r in ranking:
-                r["レース"] = race_disp
-                r["レース名"] = race_name_display
-                win5_rows.append(r)
-
-        if win5_rows:
-            df = pd.DataFrame(win5_rows)
-
-            df["venue"] = df["レース"].str.split().str[0]
-            df["race_num"] = df["レース"].str.extract(r"(\d+)R").astype(int)
-
-            df["venue_order"] = df["venue"].apply(
-                lambda v: venue_order.index(v)
-                if v in venue_order else 999
-            )
-
-            df = df.sort_values(by=["venue_order", "race_num"], ascending=[True, True])
-            df = df.sort_values(by=["venue_order", "race_num", "単勝期待値"], ascending=[True, True, False])
-
-            df = df[[
-                "レース", "レース名",
-                "馬番", "馬名", "騎手",
-                "オッズ", "人気", "勝率(%)", "単勝期待値",
-                "逃げ馬指数"
-            ]]
-
-            styler = (
-                df.style
-                .apply(highlight_rows, axis=1)
-                .apply(grade_color, axis=1)
-                .format({
-                    "オッズ": "{:.1f}",
-                    "人気": "{:.0f}",
-                    "勝率(%)": "{:.1f}",
-                    "単勝期待値": "{:.2f}",
-                    "逃げ馬指数": "{:.1f}"
-                })
-            )
-            st.dataframe(styler, use_container_width=True)
-        else:
-            st.warning("WIN5対象レースが見つかりません")
-
-# =========================
 # ★★★ 全レース分析（各レースごとに単勝期待値順）
 # =========================
 
@@ -357,60 +261,6 @@ if "races" in st.session_state and st.button("全レース分析（全件）"):
 
     if all_rows:
         df = pd.DataFrame(all_rows)
-
-        df["venue"] = df["レース"].str.split().str[0]
-        df["race_num"] = df["レース"].str.extract(r"(\d+)R").astype(int)
-
-        df["venue_order"] = df["venue"].apply(
-            lambda v: st.session_state["venue_order"].index(v)
-            if v in st.session_state["venue_order"] else 999
-        )
-
-        df = df.sort_values(by=["venue_order", "race_num"], ascending=[True, True])
-        df = df.sort_values(by=["venue_order", "race_num", "単勝期待値"], ascending=[True, True, False])
-
-        df = df[[
-            "レース", "レース名",
-            "馬番", "馬名", "騎手",
-            "オッズ", "人気", "勝率(%)", "単勝期待値",
-            "逃げ馬指数"
-        ]]
-
-        styler = (
-            df.style
-            .apply(highlight_rows, axis=1)
-            .apply(grade_color, axis=1)
-            .format({
-                "オッズ": "{:.1f}",
-                "人気": "{:.0f}",
-                "勝率(%)": "{:.1f}",
-                "単勝期待値": "{:.2f}",
-                "逃げ馬指数": "{:.1f}"
-            })
-        )
-        st.dataframe(styler, use_container_width=True)
-    else:
-        st.warning("条件に合う馬がいません")
-
-# =========================
-# ★★★ 全レース 上位1〜5位（各レースごとに単勝期待値順）
-# =========================
-
-if "races" in st.session_state and st.button("全レース 単勝期待値 上位1〜5位"):
-    top_rows = []
-
-    for label, race_id, race_disp, race_name_display in st.session_state["races"]:
-        data = get_entries(race_id)
-        ranking = calc_ev(data["entries"], winrate_threshold, ev_threshold)
-        top5 = ranking[:5]
-
-        for r in top5:
-            r["レース"] = race_disp
-            r["レース名"] = race_name_display
-            top_rows.append(r)
-
-    if top_rows:
-        df = pd.DataFrame(top_rows)
 
         df["venue"] = df["レース"].str.split().str[0]
         df["race_num"] = df["レース"].str.extract(r"(\d+)R").astype(int)
