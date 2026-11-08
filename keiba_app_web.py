@@ -128,9 +128,11 @@ def calc_ev(entries, winrate_threshold, ev_threshold):
 
 def highlight_rows(row):
     if row["単勝期待値"] >= 2.0:
-        return ["background-color: #d0ffd0"] * len(row)
+        return ["background-color: #d0ffd0"] * len(row)  # 緑
+    elif 1.5 <= row["単勝期待値"] < 2.0:
+        return ["background-color: #e6ccff"] * len(row)  # 紫
     elif row["単勝期待値"] < 1.0:
-        return ["background-color: #ffd0d0"] * len(row)
+        return ["background-color: #ffd0d0"] * len(row)  # 赤
     else:
         return [""] * len(row)
 
@@ -148,14 +150,14 @@ def sort_race_label(label, venue_order):
 # UI
 # =========================
 
-st.set_page_config(page_title="🐎競馬分析アプリ", layout="wide")
-st.title("🐎競馬分析アプリ")
+st.set_page_config(page_title="🐎競馬分析", layout="wide")
+st.title("🐎競馬分析")
 
 # 開催日プルダウン
 jra_days = [""] + get_jra_days_sorted()
 date = st.selectbox("開催日を選択してください", jra_days)
 
-winrate_threshold = st.selectbox("勝率閾値（％以上）", [0, 1, 2, 3, 4, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50])
+winrate_threshold = st.selectbox("勝率閾値（％以上）", [0, 2, 4, 6, 8, 10, 20, 25, 30, 40, 50])
 ev_threshold = float(st.selectbox("単勝期待値閾値（以上）", ["0"] + [f"{x/10:.1f}" for x in range(10, 21)]))
 
 # =========================
@@ -247,7 +249,7 @@ if "races" in st.session_state:
 # ★★★ 全レース分析（各レースごとに単勝期待値順）
 # =========================
 
-if "races" in st.session_state and st.button("全レース分析（全件）"):
+if "races" in st.session_state and st.button("全レース分析"):
     all_rows = []
 
     for label, race_id, race_disp, race_name_display in st.session_state["races"]:
