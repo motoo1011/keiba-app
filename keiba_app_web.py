@@ -311,7 +311,47 @@ if "races" in st.session_state and st.button("全レース分析"):
                 sheet_name=date,
                 index=False
             )
+            ws = writer.sheets[date]
 
+    # =========================
+    # フィルター
+    # =========================
+
+    ws.auto_filter.ref = ws.dimensions
+
+    # =========================
+    # 先頭行固定
+    # =========================
+
+    ws.freeze_panes = "A2"
+
+    # =========================
+    # 列幅自動調整
+    # =========================
+
+    for column_cells in ws.columns:
+
+        max_length = 0
+
+        for cell in column_cells:
+
+            if cell.value is not None:
+
+                max_length = max(
+                    max_length,
+                    len(str(cell.value))
+                )
+
+        column_letter = get_column_letter(
+            column_cells[0].column
+        )
+
+        ws.column_dimensions[
+            column_letter
+        ].width = min(
+            max_length + 4,
+            40
+        )
         excel_data = output.getvalue()
 
         st.download_button(
