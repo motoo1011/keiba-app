@@ -295,6 +295,21 @@ if "races" in st.session_state and st.button("全レース分析"):
             })
         )
         st.dataframe(styler, use_container_width=True)
+        # =========================
+        # CSVダウンロード
+        # =========================
+
+        csv_data = df.to_csv(
+            index=False
+        ).encode("utf-8-sig")   # Excel文字化け対策
+
+        st.download_button(
+            label="📥 全レースCSVダウンロード",
+            data=csv_data,
+            file_name=f"{date}.csv",
+            mime="text/csv"
+        )
+
     else:
         st.warning("条件に合う馬がいません")
 
