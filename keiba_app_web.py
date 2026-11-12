@@ -323,40 +323,50 @@ with pd.ExcelWriter(output, engine="openpyxl") as writer:
 
     ws.freeze_panes = "A2"
 
-    # ====================================
-    # ヘッダー色
-    # ====================================
+# ====================================
+# ヘッダー色
+# ====================================
 
-    header_fill = PatternFill(
-        fill_type="solid",
-        start_color="4472C4",
-        end_color="4472C4"
+header_fill = PatternFill(
+    fill_type="solid",
+    start_color="4472C4",
+    end_color="4472C4"
+)
+
+header_font = Font(
+    color="FFFFFF",
+    bold=True
+)
+
+for cell in ws[1]:
+    cell.fill = header_fill
+    cell.font = header_font
+
+# ====================================
+# 列幅自動調整
+# ====================================
+
+for column_cells in ws.columns:
+
+    max_length = 0
+
+    for cell in column_cells:
+        try:
+            if cell.value is not None:
+                max_length = max(
+                    max_length,
+                    len(str(cell.value))
+                )
+        except:
+            pass
+
+    column_letter = get_column_letter(
+        column_cells[0].column
     )
 
-    header_font = Font(
-        color="FFFFFF",
-        bold=True
-    )
-
-    for cell in wscell.fill = header_fill
-        cell.font = header_font
-
-    # ====================================
-    # 列幅自動調整
-    # ====================================
-
-    for column_cells in ws.columns:
-
-        length = max(
-            len(str(cell.value)) if cell.value is not None else 0
-            for cell in column_cells
-        )
-
-        adjusted_width = min(length + 4, 40)
-
-        ws.column_dimensions[
-            get_column_letter(column_cells[0].column)
-        ].width = adjusted_width
+    ws.column_dimensions[
+        column_letter
+    ].width = min(max_length + 4, 40)
 
     # ====================================
     # 色設定
