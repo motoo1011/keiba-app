@@ -444,7 +444,16 @@ for row in range(2, ws.max_row + 1):
 
     fill = None
 
-    if ev is not
+    if ev is not None:
+
+    if ev >= 2.0:
+        fill = green_fill
+
+    elif 1.5 <= ev < 2.0:
+        fill = purple_fill
+
+    elif ev < 1.0:
+        fill = red_fill
 
             # フィルター
             ws.auto_filter.ref = ws.dimensions
