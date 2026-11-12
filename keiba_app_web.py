@@ -301,8 +301,6 @@ if "races" in st.session_state and st.button("全レース分析"):
         # =========================
 
         from io import BytesIO
-        from openpyxl.styles import PatternFill, Font
-        from openpyxl.utils import get_column_letter
 
         output = BytesIO()
 
@@ -314,187 +312,6 @@ if "races" in st.session_state and st.button("全レース分析"):
                 index=False
             )
 
-            ws = writer.sheets[date]
-            
-# =========================
-# フィルター
-# =========================
-
-ws.auto_filter.ref = ws.dimensions
-
-# =========================
-# 先頭行固定
-# =========================
-
-ws.freeze_panes = "A2"
-
-# =========================
-# ヘッダー装飾
-# =========================
-
-header_fill = PatternFill(
-    fill_type="solid",
-    start_color="4472C4"
-)
-
-header_font = Font(
-    color="FFFFFF",
-    bold=True
-)
-
-for cell in ws[1]:
-    cell.fill = header_fill
-    cell.font = header_font
-
-# =========================
-# 列幅自動調整
-# =========================
-
-for column_cells in ws.columns:
-
-    max_length = 0
-
-    for cell in column_cells:
-
-        if cell.value is not None:
-
-            max_length = max(
-                max_length,
-                len(str(cell.value))
-            )
-
-    column_letter = get_column_letter(
-        column_cells[0].column
-    )
-
-    ws.column_dimensions[
-        column_letter
-    ].width = min(max_length + 4, 40)
-
-# =========================
-# 背景色
-# =========================
-
-green_fill = PatternFill(
-    fill_type="solid",
-    start_color="D0FFD0"
-)
-
-purple_fill = PatternFill(
-    fill_type="solid",
-    start_color="E6CCFF"
-)
-
-red_fill = PatternFill(
-    fill_type="solid",
-    start_color="FFD0D0"
-)
-
-# =========================
-# グレード文字色
-# =========================
-
-grade_blue = Font(
-    color="007BFF",
-    bold=True
-)
-
-grade_red = Font(
-    color="DC3545",
-    bold=True
-)
-
-grade_green = Font(
-    color="28A745",
-    bold=True
-)
-
-grade_purple = Font(
-    color="6F42C1",
-    bold=True
-)
-
-grade_orange = Font(
-    color="FD7E14",
-    bold=True
-)
-
-# =========================
-# 列位置取得
-# =========================
-
-header_map = {}
-
-for idx, cell in enumerate(ws[1], start=1):
-    header_map[cell.value] = idx
-
-ev_col = header_map["単勝期待値"]
-race_name_col = header_map["レース名"]
-
-# =========================
-# 行ごとの色付け
-# =========================
-
-for row in range(2, ws.max_row + 1):
-
-    ev = ws.cell(
-        row=row,
-        column=ev_col
-    ).value
-
-    fill = None
-
-    if ev is not None:
-
-    if ev >= 2.0:
-        fill = green_fill
-
-    elif 1.5 <= ev < 2.0:
-        fill = purple_fill
-
-    elif ev < 1.0:
-        fill = red_fill
-
-            # フィルター
-            ws.auto_filter.ref = ws.dimensions
-
-            # 先頭行固定
-            ws.freeze_panes = "A2"
-
-            # ヘッダー
-            header_fill = PatternFill(
-                fill_type="solid",
-                start_color="4472C4"
-            )
-
-            header_font = Font(
-                color="FFFFFF",
-                bold=True
-            )
-
-            for cell in ws[1]:
-                cell.fill = header_fill
-                cell.font = header_font
-
-            # 列幅自動調整
-            for column in ws.columns:
-
-                max_length = 0
-
-                for cell in column:
-                    try:
-                        if cell.value:
-                            max_length = max(
-                                max_length,
-                                len(str(cell.value))
-                            )
-                    except:
-                        pass
-
-                ws.column_dimensions[
-                    get_column_letter(column[0].column)
-                ].width = min(max_length + 4, 40)
-
         excel_data = output.getvalue()
 
         st.download_button(
@@ -503,7 +320,6 @@ for row in range(2, ws.max_row + 1):
             file_name=f"{date}.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
-
     else:
         st.warning("条件に合う馬がいません")
 
