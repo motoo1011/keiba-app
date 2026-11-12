@@ -295,204 +295,75 @@ if "races" in st.session_state and st.button("全レース分析"):
             })
         )
         st.dataframe(styler, use_container_width=True)
-# =========================
-# Excelダウンロード
-# =========================
 
-output = BytesIO()
+        # =========================
+        # Excelダウンロード
+        # =========================
 
-with pd.ExcelWriter(output, engine="openpyxl") as writer:
+        from io import BytesIO
+        from openpyxl.styles import PatternFill, Font
+        from openpyxl.utils import get_column_letter
 
-    df.to_excel(
-        writer,
-        sheet_name=date,
-        index=False
-    )
+        output = BytesIO()
 
-    ws = writer.sheets[date]
+        with pd.ExcelWriter(output, engine="openpyxl") as writer:
 
-    # ====================================
-    # フィルター
-    # ====================================
+            df.to_excel(
+                writer,
+                sheet_name=date,
+                index=False
+            )
 
-    ws.auto_filter.ref = ws.dimensions
+            ws = writer.sheets[date]
 
-    # ====================================
-    # 先頭行固定
-    # ====================================
+            # フィルター
+            ws.auto_filter.ref = ws.dimensions
 
-    ws.freeze_panes = "A2"
+            # 先頭行固定
+            ws.freeze_panes = "A2"
 
-# ====================================
-# ヘッダー色
-# ====================================
+            # ヘッダー
+            header_fill = PatternFill(
+                fill_type="solid",
+                start_color="4472C4"
+            )
 
-header_fill = PatternFill(
-    fill_type="solid",
-    start_color="4472C4",
-    end_color="4472C4"
-)
+            header_font = Font(
+                color="FFFFFF",
+                bold=True
+            )
 
-header_font = Font(
-    color="FFFFFF",
-    bold=True
-)
+            for cell in ws[1]:
+                cell.fill = header_fill
+                cell.font = header_font
 
-for cell in ws[1]:
-    cell.fill = header_fill
-    cell.font = header_font
+            # 列幅自動調整
+            for column in ws.columns:
 
-# ====================================
-# 列幅自動調整
-# ====================================
+                max_length = 0
 
-for column_cells in ws.columns:
+                for cell in column:
+                    try:
+                        if cell.value:
+                            max_length = max(
+                                max_length,
+                                len(str(cell.value))
+                            )
+                    except:
+                        pass
 
-    max_length = 0
+                ws.column_dimensions[
+                    get_column_letter(column[0].column)
+                ].width = min(max_length + 4, 40)
 
-    for cell in column_cells:
-        try:
-            if cell.value is not None:
-                max_length = max(
-                    max_length,
-                    len(str(cell.value))
-                )
-        except:
-            pass
+        excel_data = output.getvalue()
 
-    column_letter = get_column_letter(
-        column_cells[0].column
-    )
-
-    ws.column_dimensions[
-        column_letter
-    ].width = min(max_length + 4, 40)
-
-    # ====================================
-    # 色設定
-    # ====================================
-
-    green_fill = PatternFill(
-        fill_type="solid",
-        start_color="D0FFD0",
-        end_color="D0FFD0"
-    )
-
-    purple_fill = PatternFill(
-        fill_type="solid",
-        start_color="E6CCFF",
-        end_color="E6CCFF"
-    )
-
-    red_fill = PatternFill(
-        fill_type="solid",
-        start_color="FFD0D0",
-        end_color="FFD0D0"
-    )
-
-    grade_blue = Font(
-        color="007BFF",
-        bold=True
-    )
-
-    grade_red = Font(
-        color="DC3545",
-        bold=True
-    )
-
-    grade_green = Font(
-        color="28A745",
-        bold=True
-    )
-
-    grade_purple = Font(
-        color="6F42C1",
-        bold=True
-    )
-
-    grade_orange = Font(
-        color="FD7E14",
-        bold=True
-    )
-
-    # ====================================
-    # 列位置取得
-    # ====================================
-
-    header_map = {}
-
-    for idx, cell in enumerate(ws[1], start=1):
-        header_map[cell.value] = idx
-
-    ev_col = header_map["単勝期待値"]
-    race_name_col = header_map["レース名"]
-
-    # ====================================
-    # 行ごとの色付け
-    # ====================================
-
-    for row in range(2, ws.max_row + 1):
-
-        ev = ws.cell(
-            row=row,
-            column=ev_col
-        ).value
-
-        fill_color = None
-
-        if ev is not None:
-
-            if ev >= 2.0:
-                fill_color = green_fill
-
-            elif 1.5 <= ev < 2.0:
-                fill_color = purple_fill
-
-            elif ev < 1.0:
-                fill_color = red_fill
-
-        if fill_color:
-            for col in range(1, ws.max_column + 1):
-                ws.cell(
-                    row=row,
-                    column=col
-                ).fill = fill_color
-
-        race_name = str(
-            ws.cell(
-                row=row,
-                column=race_name_col
-            ).value
+        st.download_button(
+            label="📊 Excelダウンロード",
+            data=excel_data,
+            file_name=f"{date}.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
-
-        race_name_cell = ws.cell(
-            row=row,
-            column=race_name_col
-        )
-
-        if "GⅠ" in race_name or "J・GⅠ" in race_name:
-            race_name_cell.font = grade_blue
-
-        elif "GⅡ" in race_name or "J・GⅡ" in race_name:
-            race_name_cell.font = grade_red
-
-        elif "GⅢ" in race_name or "J・GⅢ" in race_name:
-            race_name_cell.font = grade_green
-
-        elif "L" in race_name:
-            race_name_cell.font = grade_purple
-
-        elif "OP" in race_name:
-            race_name_cell.font = grade_orange
-
-excel_data = output.getvalue()
-
-st.download_button(
-    label="📊 Excelダウンロード",
-    data=excel_data,
-    file_name=f"{date}.xlsx",
-    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-)
 
     else:
         st.warning("条件に合う馬がいません")
