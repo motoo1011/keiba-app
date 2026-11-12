@@ -331,31 +331,40 @@ if "races" in st.session_state and st.button("全レース分析"):
     # =========================
 
     for column_cells in ws.columns:
-
-        max_length = 0
-
-        for cell in column_cells:
-
-            if cell.value is not None:
-
-                max_length = max(
-                    max_length,
-                    len(str(cell.value))
-                )
-
-        column_letter = get_column_letter(
-            column_cells[0].column
-        )
-
-        ws.column_dimensions[
-            column_letter
-        ].width = min(
-            max_length + 4,
-            40
-        )
-        excel_data = output.getvalue()
-
-        st.download_button(
+ 
+max_length = 0
+ 
+for cell in column_cells:
+ 
+if cell.value is not None:
+ 
+max_length = max(
+max_length,
+len(str(cell.value))
+)
+ 
+column_letter = get_column_letter(
+column_cells[0].column
+)
+ 
+ws.column_dimensions[
+column_letter
+].width = min(
+max_length + 4,
+40
+)
+ 
+# ← forループここで終了
+ 
+excel_data = output.getvalue()
+ 
+st.download_button(
+label="📊 Excelダウンロード",
+data=excel_data,
+file_name=f"{date}.xlsx",
+mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+key="all_excel_download"
+)
             label="📊 Excelダウンロード",
             data=excel_data,
             file_name=f"{date}.xlsx",
