@@ -315,6 +315,58 @@ if "races" in st.session_state and st.button("全レース分析"):
             )
 
             ws = writer.sheets[date]
+            # 色定義
+
+green_fill = PatternFill(
+    fill_type="solid",
+    start_color="D0FFD0"
+)
+
+purple_fill = PatternFill(
+    fill_type="solid",
+    start_color="E6CCFF"
+)
+
+red_fill = PatternFill(
+    fill_type="solid",
+    start_color="FFD0D0"
+)
+
+# 単勝期待値列を探す
+
+header_map = {}
+
+for idx, cell in enumerate(ws[1], start=1):
+    header_map[cell.value] = idx
+
+ev_col = header_map["単勝期待値"]
+
+# 行ごとに色付け
+
+for row in range(2, ws.max_row + 1):
+
+    ev = ws.cell(
+        row=row,
+        column=ev_col
+    ).value
+
+    fill = None
+
+    if ev >= 2.0:
+        fill = green_fill
+
+    elif 1.5 <= ev < 2.0:
+        fill = purple_fill
+
+    elif ev < 1.0:
+        fill = red_fill
+
+    if fill:
+        for col in range(1, ws.max_column + 1):
+            ws.cell(
+                row=row,
+                column=col
+            ).fill = fill
 
             # フィルター
             ws.auto_filter.ref = ws.dimensions
