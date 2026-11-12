@@ -365,12 +365,6 @@ file_name=f"{date}.xlsx",
 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
 key="all_excel_download"
 )
-            label="📊 Excelダウンロード",
-            data=excel_data,
-            file_name=f"{date}.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            key="all_excel_download"
-        )
     else:
         st.warning("条件に合う馬がいません")
 
