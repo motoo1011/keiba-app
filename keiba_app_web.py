@@ -301,6 +301,7 @@ if "races" in st.session_state and st.button("全レース分析"):
         # =========================
 
         from io import BytesIO
+        from openpyxl.utils import get_column_letter
 
         output = BytesIO()
 
@@ -360,6 +361,7 @@ if "races" in st.session_state and st.button("全レース分析"):
             file_name=f"{date}.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
+        
     else:
         st.warning("条件に合う馬がいません")
 
