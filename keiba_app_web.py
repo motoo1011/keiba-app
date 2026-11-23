@@ -154,7 +154,7 @@ def sort_race_label(label, venue_order):
 jra_days = [""] + get_jra_days_sorted()
 date = st.selectbox("開催日を選択してください", jra_days)
 
-winrate_threshold = st.selectbox("勝率閾値（％以上）", [0, 10, 20, 30, 40, 50])
+winrate_threshold = st.selectbox("勝率閾値（％以上）", [0, 4, 10, 20, 30, 40, 50])
 ev_threshold = st.selectbox("単勝期待値閾値（以上）", [0, 1, 1.5, 2])
 
 # =========================
