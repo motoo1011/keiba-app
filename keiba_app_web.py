@@ -220,7 +220,7 @@ if "races" in st.session_state:
             df = df[[
                 "レース", "レース名",
                 "馬番", "馬名", "騎手",
-                "オッズ", "人気", "勝率(%)", "単勝期待値",
+                "人気", "オッズ", "勝率(%)", "単勝期待値",
                 "逃げ馬指数"
             ]]
 
@@ -231,8 +231,8 @@ if "races" in st.session_state:
                 .apply(highlight_rows, axis=1)
                 .apply(grade_color, axis=1)
                 .format({
-                    "オッズ": "{:.1f}",
                     "人気": "{:.0f}",
+                    "オッズ": "{:.1f}",
                     "勝率(%)": "{:.1f}",
                     "単勝期待値": "{:.2f}",
                     "逃げ馬指数": "{:.1f}"
@@ -275,7 +275,7 @@ if "races" in st.session_state and st.button("全レース分析"):
         df = df[[
             "レース", "レース名",
             "馬番", "馬名", "騎手",
-            "オッズ", "人気", "勝率(%)", "単勝期待値",
+            "人気", "オッズ", "勝率(%)", "単勝期待値",
             "逃げ馬指数"
         ]]
 
@@ -284,8 +284,8 @@ if "races" in st.session_state and st.button("全レース分析"):
             .apply(highlight_rows, axis=1)
             .apply(grade_color, axis=1)
             .format({
-                "オッズ": "{:.1f}",
                 "人気": "{:.0f}",
+                "オッズ": "{:.1f}",
                 "勝率(%)": "{:.1f}",
                 "単勝期待値": "{:.2f}",
                 "逃げ馬指数": "{:.1f}"
