@@ -150,9 +150,6 @@ def sort_race_label(label, venue_order):
 # UI
 # =========================
 
-st.set_page_config(page_title="🐎競馬分析", layout="wide")
-st.title("🐎競馬分析")
-
 # 開催日プルダウン
 jra_days = [""] + get_jra_days_sorted()
 date = st.selectbox("開催日を選択してください", jra_days)
@@ -296,39 +293,5 @@ if "races" in st.session_state and st.button("全レース分析"):
         )
         st.dataframe(styler, use_container_width=True)
 
-        # =========================
-        # Excelダウンロード
-        # =========================
-
-        from io import BytesIO
-
-        output = BytesIO()
-
-        with pd.ExcelWriter(output, engine="openpyxl") as writer:
-
-            df.to_excel(
-                writer,
-                sheet_name=date,
-                index=False
-            )
-
-        excel_data = output.getvalue()
-
-        st.download_button(
-            label="📊 Excelダウンロード",
-            data=excel_data,
-            file_name=f"{date}.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
     else:
         st.warning("条件に合う馬がいません")
-
-# =========================
-# 馬場傾向（外部サイトへジャンプ）
-# =========================
-
-st.link_button(
-    "馬場傾向（トラックバイアス）を確認",
-    "https://www.bloodline-trackbias.work/"
-)
-
