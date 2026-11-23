@@ -224,7 +224,7 @@ if "races" in st.session_state:
                 "逃げ馬指数"
             ]]
 
-            df = df.sort_values(by=["単勝期待値"], ascending=[False])
+            df = df.sort_values(by=["勝率(%)"], ascending=[False])
 
             styler = (
                 df.style
