@@ -114,8 +114,8 @@ def calc_ev(entries, winrate_threshold, ev_threshold):
                 "馬番": e["number"],
                 "馬名": e["name"],
                 "騎手": jockey,
-                "オッズ": odds,
                 "人気": e["popularity"],
+                "オッズ": odds,
                 "勝率(%)": win * 100,
                 "単勝期待値": ev,
                 "逃げ馬指数": e.get("predictFirstPhaseIndex", 0)
